@@ -13,6 +13,20 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
+const string FrontendCorsPolicyName = "Frontend";
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(FrontendCorsPolicyName, policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:3000",
+                "https://localhost:3000")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
@@ -42,6 +56,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseCors(FrontendCorsPolicyName);
 
 app.MapDefaultEndpoints();
 app.MapCoffeeBarEndpoints();
