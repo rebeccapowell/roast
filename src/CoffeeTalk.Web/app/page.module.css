@@ -136,6 +136,26 @@
   font-weight: 700;
 }
 
+.shareLink {
+  margin-top: 0.75rem;
+}
+
+.shareAnchor {
+  color: #8b5e3c;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.shareAnchor:hover {
+  text-decoration: underline;
+}
+
+.identityHint {
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  color: #5a3b33;
+}
+
 .error {
   color: #b42318;
   font-size: 0.95rem;

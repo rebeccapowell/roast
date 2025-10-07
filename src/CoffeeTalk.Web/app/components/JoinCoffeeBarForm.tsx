@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import styles from "../page.module.css";
+import { saveIdentity } from "../lib/identity";
 
 type SubmissionPolicy = "LockOnFirstBrew" | "AlwaysOpen";
 
@@ -18,6 +19,13 @@ type IngredientResource = {
   submitterIds: string[];
 };
 
+type SubmissionResource = {
+  id: string;
+  ingredientId: string;
+  hipsterId: string;
+  submittedAt: string;
+};
+
 type CoffeeBarResource = {
   id: string;
   code: string;
@@ -28,6 +36,7 @@ type CoffeeBarResource = {
   isClosed: boolean;
   hipsters: HipsterResource[];
   ingredients: IngredientResource[];
+  submissions: SubmissionResource[];
 };
 
 type JoinCoffeeBarResponse = {
@@ -43,6 +52,14 @@ export function JoinCoffeeBarForm() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<JoinCoffeeBarResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const shareLink = useMemo(() => {
+    if (!result || typeof window === "undefined") {
+      return "";
+    }
+
+    return `${window.location.origin}/coffee-bars/${result.coffeeBar.code}`;
+  }, [result]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -75,7 +92,14 @@ export function JoinCoffeeBarForm() {
         return;
       }
 
-      setResult(payload as JoinCoffeeBarResponse);
+      const joined = payload as JoinCoffeeBarResponse;
+      setResult(joined);
+      saveIdentity({
+        coffeeBarId: joined.coffeeBar.id,
+        coffeeBarCode: joined.coffeeBar.code,
+        hipsterId: joined.hipster.id,
+        username: joined.hipster.username,
+      });
       setUsername("");
     } catch (err) {
       console.error(err);
@@ -138,6 +162,14 @@ export function JoinCoffeeBarForm() {
             You can submit up to {result.hipster.maxIngredientQuota} ingredients in {result.coffeeBar.theme}.
           </div>
           <div>Remember this bar code: {result.coffeeBar.code}</div>
+          {shareLink && (
+            <div className={styles.shareLink}>
+              Invite others with this link: <a className={styles.shareAnchor} href={shareLink}>{shareLink}</a>
+            </div>
+          )}
+          <div className={styles.identityHint}>
+            We've saved your spot so you can hop straight into the bar next time.
+          </div>
         </div>
       )}
       {error && <div className={styles.error}>{error}</div>}

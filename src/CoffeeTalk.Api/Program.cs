@@ -44,6 +44,7 @@ builder.Services.AddDbContext<CoffeeTalkDbContext>(options =>
 
 builder.Services.AddScoped<ICoffeeBarRepository, CoffeeBarRepository>();
 builder.Services.AddScoped<ICoffeeBarCodeGenerator, CoffeeBarCodeGenerator>();
+builder.Services.AddSingleton<INextIngredientSelector, RandomNextIngredientSelector>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IBrewSessionSummaryProvider, InMemoryBrewSessionSummaryProvider>();
 builder.Services.AddEndpointsApiExplorer();

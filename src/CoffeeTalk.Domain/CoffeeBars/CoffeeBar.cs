@@ -207,6 +207,48 @@ public sealed class CoffeeBar
         return cycle;
     }
 
+    public void RemoveSubmission(Guid hipsterId, Guid submissionId)
+    {
+        if (hipsterId == Guid.Empty)
+        {
+            throw new DomainException("Hipster identifier cannot be empty.");
+        }
+
+        if (submissionId == Guid.Empty)
+        {
+            throw new DomainException("Submission identifier cannot be empty.");
+        }
+
+        if (_hipsters.All(hipster => hipster.Id != hipsterId))
+        {
+            throw new DomainException("Hipster must be part of the coffee bar.");
+        }
+
+        var submission = _submissions.FirstOrDefault(submission => submission.Id == submissionId)
+            ?? throw new DomainException("Submission was not found.");
+
+        if (submission.HipsterId != hipsterId)
+        {
+            throw new DomainException("Hipster can only remove their own submissions.");
+        }
+
+        var ingredient = _ingredients.FirstOrDefault(ingredient => ingredient.Id == submission.IngredientId)
+            ?? throw new DomainException("Ingredient was not found.");
+
+        if (ingredient.IsConsumed)
+        {
+            throw new DomainException("Cannot remove an ingredient that has already been consumed.");
+        }
+
+        ingredient.RemoveSubmission(hipsterId);
+        _submissions.Remove(submission);
+
+        if (!ingredient.SubmitterIds.Any())
+        {
+            _ingredients.Remove(ingredient);
+        }
+    }
+
     public Vote CastVote(Guid cycleId, Guid voteId, Guid voterHipsterId, Guid targetHipsterId, DateTimeOffset castAt)
     {
         if (!_hipsters.Any(h => h.Id == voterHipsterId))

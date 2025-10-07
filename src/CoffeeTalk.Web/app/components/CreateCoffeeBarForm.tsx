@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import styles from "../page.module.css";
+import { saveIdentity } from "../lib/identity";
 
 type SubmissionPolicy = "LockOnFirstBrew" | "AlwaysOpen";
 
@@ -18,6 +19,13 @@ type IngredientResource = {
   submitterIds: string[];
 };
 
+type SubmissionResource = {
+  id: string;
+  ingredientId: string;
+  hipsterId: string;
+  submittedAt: string;
+};
+
 type CoffeeBarResource = {
   id: string;
   code: string;
@@ -28,6 +36,12 @@ type CoffeeBarResource = {
   isClosed: boolean;
   hipsters: HipsterResource[];
   ingredients: IngredientResource[];
+  submissions: SubmissionResource[];
+};
+
+type CreateCoffeeBarResponse = {
+  coffeeBar: CoffeeBarResource;
+  hipster: HipsterResource;
 };
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/$/, "");
@@ -37,9 +51,18 @@ export function CreateCoffeeBarForm() {
   const [theme, setTheme] = useState("");
   const [maxPerHipster, setMaxPerHipster] = useState("");
   const [policy, setPolicy] = useState<SubmissionPolicy>("LockOnFirstBrew");
+  const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<CoffeeBarResource | null>(null);
+  const [result, setResult] = useState<CreateCoffeeBarResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const shareLink = useMemo(() => {
+    if (!result || typeof window === "undefined") {
+      return "";
+    }
+
+    return `${window.location.origin}/coffee-bars/${result.coffeeBar.code}`;
+  }, [result]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -62,6 +85,7 @@ export function CreateCoffeeBarForm() {
           theme,
           defaultMaxIngredientsPerHipster: quota,
           submissionPolicy: policy,
+          creatorUsername: username,
         }),
       });
 
@@ -71,9 +95,17 @@ export function CreateCoffeeBarForm() {
         return;
       }
 
-      setResult(payload as CoffeeBarResource);
+      const created = payload as CreateCoffeeBarResponse;
+      setResult(created);
+      saveIdentity({
+        coffeeBarId: created.coffeeBar.id,
+        coffeeBarCode: created.coffeeBar.code,
+        hipsterId: created.hipster.id,
+        username: created.hipster.username,
+      });
       setTheme("");
       setMaxPerHipster("");
+      setUsername("");
     } catch (err) {
       console.error(err);
       setError("Something went wrong while creating your coffee bar. Please try again.");
@@ -136,6 +168,23 @@ export function CreateCoffeeBarForm() {
             <option value="AlwaysOpen">Always open</option>
           </select>
         </div>
+        <div className={styles.fieldGroup}>
+          <label className={styles.label} htmlFor="creatorUsername">
+            Your username
+          </label>
+          <input
+            id="creatorUsername"
+            name="creatorUsername"
+            className={styles.input}
+            placeholder="DJ Espresso"
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+            required
+            minLength={3}
+            maxLength={20}
+            disabled={loading}
+          />
+        </div>
         <button className={styles.submitButton} type="submit" disabled={loading}>
           {loading ? "Crafting..." : "Create bar"}
         </button>
@@ -143,12 +192,20 @@ export function CreateCoffeeBarForm() {
       {result && (
         <div className={styles.result}>
           <strong>Bar ready!</strong>
-          <div>Share code: {result.code}</div>
+          <div>Share code: {result.coffeeBar.code}</div>
           <div>
-            Theme: <strong>{result.theme}</strong>
+            Theme: <strong>{result.coffeeBar.theme}</strong>
           </div>
           <div>
-            Submissions: up to {result.defaultMaxIngredientsPerHipster} per hipster · policy {result.submissionPolicy}
+            Submissions: up to {result.coffeeBar.defaultMaxIngredientsPerHipster} per hipster · policy {result.coffeeBar.submissionPolicy}
+          </div>
+          {shareLink && (
+            <div className={styles.shareLink}>
+              Share this link with your crew: <a className={styles.shareAnchor} href={shareLink}>{shareLink}</a>
+            </div>
+          )}
+          <div className={styles.identityHint}>
+            You're in! We saved your handle (<strong>{result.hipster.username}</strong>) so you can dive back into the bar instantly.
           </div>
         </div>
       )}
