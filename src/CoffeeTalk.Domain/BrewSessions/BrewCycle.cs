@@ -76,4 +76,27 @@ public sealed class BrewCycle
 
         return new RevealResult(Id, tally, submitterSet, correctGuessers);
     }
+
+    internal static BrewCycle FromState(
+        Guid id,
+        Guid sessionId,
+        Guid ingredientId,
+        DateTimeOffset startedAt,
+        IEnumerable<Vote> votes,
+        DateTimeOffset? revealedAt,
+        IEnumerable<Guid>? submitterIds)
+    {
+        ArgumentNullException.ThrowIfNull(votes);
+
+        var cycle = new BrewCycle(id, sessionId, ingredientId, startedAt);
+        cycle._votes.AddRange(votes);
+
+        if (revealedAt is DateTimeOffset revealMoment)
+        {
+            ArgumentNullException.ThrowIfNull(submitterIds);
+            cycle.Reveal(submitterIds, revealMoment);
+        }
+
+        return cycle;
+    }
 }

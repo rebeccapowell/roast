@@ -27,4 +27,11 @@ public sealed class Hipster
 
         MaxIngredientQuota = quota;
     }
+
+    internal static Hipster FromState(Guid id, string username, string normalizedUsername, int maxIngredientQuota)
+    {
+        var hipster = new Hipster(id, username, normalizedUsername, maxIngredientQuota);
+        hipster.UpdateQuota(maxIngredientQuota);
+        return hipster;
+    }
 }

@@ -24,4 +24,15 @@ public sealed class Vote
     {
         IsCorrect = isCorrect;
     }
+
+    internal static Vote FromState(Guid id, Guid voterHipsterId, Guid targetHipsterId, DateTimeOffset castAt, bool? isCorrect)
+    {
+        var vote = new Vote(id, voterHipsterId, targetHipsterId, castAt);
+        if (isCorrect is bool correctness)
+        {
+            vote.MarkCorrectness(correctness);
+        }
+
+        return vote;
+    }
 }
