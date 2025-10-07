@@ -168,7 +168,7 @@ export function JoinCoffeeBarForm() {
             </div>
           )}
           <div className={styles.identityHint}>
-            We've saved your spot so you can hop straight into the bar next time.
+            We’ve saved your spot so you can hop straight into the bar next time.
           </div>
         </div>
       )}
