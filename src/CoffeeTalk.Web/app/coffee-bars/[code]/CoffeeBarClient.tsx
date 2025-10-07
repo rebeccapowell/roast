@@ -37,6 +37,7 @@ type CoffeeBarResource = {
   submissionPolicy: SubmissionPolicy;
   submissionsLocked: boolean;
   isClosed: boolean;
+  activeSessionId: string | null;
   hipsters: HipsterResource[];
   ingredients: IngredientResource[];
   submissions: SubmissionResource[];
@@ -603,6 +604,18 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
     },
     [normalizedCode],
   );
+
+  useEffect(() => {
+    if (!coffeeBar || !coffeeBar.activeSessionId) {
+      return;
+    }
+
+    if (sessionState && sessionState.session.id === coffeeBar.activeSessionId) {
+      return;
+    }
+
+    void refreshSession(coffeeBar.activeSessionId);
+  }, [coffeeBar, refreshSession, sessionState]);
 
   useEffect(() => {
     if (realtimeConnected) {

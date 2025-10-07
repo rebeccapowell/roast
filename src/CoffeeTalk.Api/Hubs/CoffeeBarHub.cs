@@ -63,8 +63,20 @@ public sealed class CoffeeBarHub(ICoffeeBarRepository repository, ILogger<Coffee
             return;
         }
 
-        await Groups.AddToGroupAsync(Context.ConnectionId, GetGroupName(normalized), cancellationToken)
-            .ConfigureAwait(false);
+        try
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, GetGroupName(normalized), cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Failed to add connection {ConnectionId} to coffee bar group {Code}.",
+                Context.ConnectionId,
+                normalized);
+            return;
+        }
 
         try
         {

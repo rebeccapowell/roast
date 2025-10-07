@@ -259,10 +259,17 @@ public static class CoffeeBarEndpoints
             await repository.UpdateAsync(coffeeBar, cancellationToken).ConfigureAwait(false);
 
             var response = CoffeeBarContractsMapper.ToSessionStateResource(coffeeBar, session);
+            var group = CoffeeBarHub.GetGroupName(response.CoffeeBar.Code);
 
             await hubContext
                 .Clients
-                .Group(CoffeeBarHub.GetGroupName(response.CoffeeBar.Code))
+                .Group(group)
+                .CoffeeBarUpdated(response.CoffeeBar)
+                .ConfigureAwait(false);
+
+            await hubContext
+                .Clients
+                .Group(group)
                 .SessionUpdated(response)
                 .ConfigureAwait(false);
 

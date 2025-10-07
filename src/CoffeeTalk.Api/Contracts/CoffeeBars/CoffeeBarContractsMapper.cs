@@ -25,6 +25,11 @@ public static class CoffeeBarContractsMapper
             .Select(ToResource)
             .ToList();
 
+        var activeSessionId = coffeeBar.Sessions
+            .OrderByDescending(session => session.StartedAt)
+            .FirstOrDefault(session => session.IsActive)
+            ?.Id;
+
         return new CoffeeBarResource(
             coffeeBar.Id,
             coffeeBar.Code.Value,
@@ -33,6 +38,7 @@ public static class CoffeeBarContractsMapper
             coffeeBar.SubmissionPolicy,
             coffeeBar.SubmissionsLocked,
             coffeeBar.IsClosed,
+            activeSessionId,
             hipsters,
             ingredients,
             submissions);

@@ -40,11 +40,13 @@ public sealed class CoffeeBarEndpointsTests
         created.Code.Length.ShouldBe(6);
         created.Code.All(char.IsLetterOrDigit).ShouldBeTrue();
         created.Code.ToUpperInvariant().IndexOfAny("AEIOU".ToCharArray()).ShouldBe(-1);
+        created.ActiveSessionId.ShouldBeNull();
 
         var fetched = await client.GetFromJsonAsync<CoffeeBarResource>($"/coffee-bars/{created.Code}", SerializerOptions);
         fetched.ShouldNotBeNull();
         fetched!.Code.ShouldBe(created.Code);
         fetched.Theme.ShouldBe("Synthwave Showdown");
+        fetched.ActiveSessionId.ShouldBeNull();
     }
 
     [RequiresDockerFact]
@@ -144,6 +146,7 @@ public sealed class CoffeeBarEndpointsTests
         sessionState.ShouldNotBeNull();
 
         var sessionId = sessionState!.Session.Id;
+        sessionState.CoffeeBar.ActiveSessionId.ShouldBe(sessionId);
         var cycle = sessionState.Session.Cycles.ShouldHaveSingleItem();
 
         var voteResponse = await client.PostAsJsonAsync(
