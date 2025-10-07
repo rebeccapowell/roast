@@ -149,6 +149,14 @@ namespace CoffeeTalk.Infrastructure.Data.Migrations
                     b.Property<bool>("IsConsumed")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("ThumbnailUrl")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<string>("VideoId")
                         .IsRequired()
                         .HasMaxLength(32)

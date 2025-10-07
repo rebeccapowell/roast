@@ -16,7 +16,9 @@ internal static class IngredientMapper
             CoffeeBarId = coffeeBarId,
             VideoId = ingredient.VideoId,
             CreatedAt = ingredient.CreatedAt,
-            IsConsumed = ingredient.IsConsumed
+            IsConsumed = ingredient.IsConsumed,
+            Title = ingredient.Title,
+            ThumbnailUrl = ingredient.ThumbnailUrl
         };
     }
 
@@ -24,6 +26,13 @@ internal static class IngredientMapper
     {
         ArgumentNullException.ThrowIfNull(entity);
 
-        return Ingredient.FromState(entity.Id, entity.VideoId, entity.CreatedAt, entity.IsConsumed, submitterIds);
+        return Ingredient.FromState(
+            entity.Id,
+            entity.VideoId,
+            entity.CreatedAt,
+            entity.IsConsumed,
+            submitterIds,
+            entity.Title,
+            entity.ThumbnailUrl);
     }
 }

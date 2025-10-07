@@ -22,6 +22,12 @@ public sealed class IngredientEntityConfiguration : IEntityTypeConfiguration<Ing
         builder.Property(entity => entity.IsConsumed)
             .IsRequired();
 
+        builder.Property(entity => entity.Title)
+            .HasMaxLength(200);
+
+        builder.Property(entity => entity.ThumbnailUrl)
+            .HasMaxLength(512);
+
         builder.HasMany(entity => entity.Submissions)
             .WithOne(submission => submission.Ingredient)
             .HasForeignKey(submission => submission.IngredientId)

@@ -5,6 +5,8 @@ public sealed record BrewCycleResource(
     Guid SessionId,
     Guid IngredientId,
     string VideoId,
+    string? VideoTitle,
+    string? ThumbnailUrl,
     DateTimeOffset StartedAt,
     DateTimeOffset? RevealedAt,
     bool IsActive,

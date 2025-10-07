@@ -507,6 +507,7 @@ public static class CoffeeBarEndpoints
         string code,
         SubmitIngredientRequest request,
         ICoffeeBarRepository repository,
+        IYouTubeMetadataProvider metadataProvider,
         TimeProvider timeProvider,
         IHubContext<CoffeeBarHub, ICoffeeBarClient> hubContext,
         CancellationToken cancellationToken)
@@ -524,7 +525,17 @@ public static class CoffeeBarEndpoints
                 return TypedResults.BadRequest(CreateProblemDetails("Unable to extract a YouTube video identifier from the provided URL."));
             }
 
-            var submission = coffeeBar.SubmitIngredient(Guid.NewGuid(), request.HipsterId, videoId, timeProvider.GetUtcNow());
+            var metadata = await metadataProvider
+                .TryGetMetadataAsync(videoId, cancellationToken)
+                .ConfigureAwait(false);
+
+            var submission = coffeeBar.SubmitIngredient(
+                Guid.NewGuid(),
+                request.HipsterId,
+                videoId,
+                timeProvider.GetUtcNow(),
+                metadata?.Title,
+                metadata?.ThumbnailUrl);
             await repository.UpdateAsync(coffeeBar, cancellationToken).ConfigureAwait(false);
 
             var ingredient = coffeeBar.Ingredients.First(i => i.Id == submission.IngredientId);

@@ -20,6 +20,8 @@ type IngredientResource = {
   videoId: string;
   isConsumed: boolean;
   submitterIds: string[];
+  title: string | null;
+  thumbnailUrl: string | null;
 };
 
 type SubmissionResource = {
@@ -67,6 +69,8 @@ type BrewCycleResource = {
   sessionId: string;
   ingredientId: string;
   videoId: string;
+  videoTitle: string | null;
+  thumbnailUrl: string | null;
   startedAt: string;
   revealedAt: string | null;
   isActive: boolean;
@@ -390,10 +394,13 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
 
   const sessionCycles = useMemo(() => sessionState?.session.cycles ?? [], [sessionState]);
 
-  const activeCycle = useMemo(
-    () => (hasActiveSession ? sessionCycles.find((cycle) => cycle.isActive) ?? null : null),
-    [hasActiveSession, sessionCycles],
-  );
+  const activeCycle = useMemo(() => {
+    if (!hasActiveSession) {
+      return null;
+    }
+
+    return sessionCycles.find((cycle) => cycle.revealedAt === null) ?? null;
+  }, [hasActiveSession, sessionCycles]);
 
   const latestCycle = useMemo(
     () => (sessionCycles.length ? sessionCycles[sessionCycles.length - 1] : null),
@@ -408,7 +415,7 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
     }
   }, [latestCycle, sessionState]);
 
-  const cycleForPlayer = playerCycle ?? latestCycle;
+  const cycleForPlayer = playerCycle ?? activeCycle ?? latestCycle;
 
   const hipsterNameById = useMemo(() => {
     if (!coffeeBar) {
@@ -448,6 +455,26 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
   const alreadyVoted = Boolean(
     identity && activeCycle && activeCycle.votes.some((vote) => vote.voterHipsterId === identity.hipsterId),
   );
+
+  const cycleStatusMessage = useMemo(() => {
+    if (hasActiveSession) {
+      if (activeCycle) {
+        return "Voting is open. Close it when your crew is ready.";
+      }
+
+      if (latestCycle) {
+        return "Voting is closed. Reveal results or move to the next video.";
+      }
+
+      return "No cycle is active yet.";
+    }
+
+    if (sessionState) {
+      return "Session has ended. Start a new session to brew again.";
+    }
+
+    return "No cycle is active yet.";
+  }, [activeCycle, hasActiveSession, latestCycle, sessionState]);
 
   const shareLink = useMemo(() => {
     if (!coffeeBar || typeof window === "undefined") {
@@ -855,40 +882,43 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
       ) : coffeeBar ? (
         <>
           <header className={styles.header}>
-            <div className={styles.headerTop}>Coffee Bar · {coffeeBar.code}</div>
-            <h1 className={styles.title}>{coffeeBar.theme}</h1>
-            <p className={styles.shareHint}>
-              Share this link with your crew: {" "}
-              {shareLink ? (
-                <a className={styles.shareAnchor} href={shareLink}>
-                  {shareLink}
-                </a>
-              ) : (
-                "Copy the URL"
-              )}
-            </p>
-            <p className={styles.policy}>
-              Policy: <strong>{coffeeBar.submissionPolicy === "LockOnFirstBrew" ? "Lock on first brew" : "Always open"}</strong>
-              {" · "}Max ingredients per hipster: <strong>{coffeeBar.defaultMaxIngredientsPerHipster}</strong>
-            </p>
+            <div className={styles.headerInfo}>
+              <div className={styles.headerTop}>Coffee Bar · {coffeeBar.code}</div>
+              <h1 className={styles.title}>{coffeeBar.theme}</h1>
+            </div>
+            <div className={styles.headerActions}>
+              <p className={styles.shareHint}>
+                Share this link with your crew: {" "}
+                {shareLink ? (
+                  <a className={styles.shareAnchor} href={shareLink}>
+                    {shareLink}
+                  </a>
+                ) : (
+                  "Copy the URL"
+                )}
+              </p>
+              <p className={styles.policy}>
+                Policy: <strong>{coffeeBar.submissionPolicy === "LockOnFirstBrew" ? "Lock on first brew" : "Always open"}</strong>
+                {" · "}Max ingredients per hipster: <strong>{coffeeBar.defaultMaxIngredientsPerHipster}</strong>
+              </p>
+              <div className={styles.viewSwitcher}>
+                <button
+                  type="button"
+                  className={`${styles.viewButton} ${activeView === "cycle" ? styles.viewButtonActive : ""}`}
+                  onClick={() => setActiveView("cycle")}
+                >
+                  Cycle view
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.viewButton} ${activeView === "bar" ? styles.viewButtonActive : ""}`}
+                  onClick={() => setActiveView("bar")}
+                >
+                  Bar management
+                </button>
+              </div>
+            </div>
           </header>
-
-          <div className={styles.viewSwitcher}>
-            <button
-              type="button"
-              className={`${styles.viewButton} ${activeView === "cycle" ? styles.viewButtonActive : ""}`}
-              onClick={() => setActiveView("cycle")}
-            >
-              Cycle view
-            </button>
-            <button
-              type="button"
-              className={`${styles.viewButton} ${activeView === "bar" ? styles.viewButtonActive : ""}`}
-              onClick={() => setActiveView("bar")}
-            >
-              Bar management
-            </button>
-          </div>
 
           {activeView === "bar" ? (
             <div className={styles.layout}>
@@ -1031,20 +1061,33 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
                         {mySubmissions.map(({ submission, ingredient }) => (
                           <li key={submission.id}>
                             <div className={styles.submissionRow}>
-                              <span>
-                                {ingredient ? (
-                                  <a
-                                    className={styles.shareAnchor}
-                                    href={`https://youtu.be/${ingredient.videoId}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                  >
-                                    https://youtu.be/{ingredient.videoId}
-                                  </a>
-                                ) : (
-                                  "Unknown video"
-                                )}
-                              </span>
+                              <div className={styles.submissionInfo}>
+                                {ingredient?.thumbnailUrl ? (
+                                  <>
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      className={styles.submissionThumbnail}
+                                      src={ingredient.thumbnailUrl}
+                                      alt={ingredient?.title ?? "YouTube thumbnail"}
+                                    />
+                                  </>
+                                ) : null}
+                                <div className={styles.submissionText}>
+                                  <div className={styles.submissionTitle}>
+                                    {ingredient?.title ?? "Unknown video"}
+                                  </div>
+                                  {ingredient ? (
+                                    <a
+                                      className={styles.shareAnchor}
+                                      href={`https://youtu.be/${ingredient.videoId}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                    >
+                                      https://youtu.be/{ingredient.videoId}
+                                    </a>
+                                  ) : null}
+                                </div>
+                              </div>
                               <button
                                 type="button"
                                 className={styles.secondaryButton}
@@ -1094,144 +1137,155 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
             </div>
           ) : (
             <div className={styles.cycleView}>
+              <div className={styles.cycleToolbar}>
+                <button
+                  type="button"
+                  className={styles.linkButton}
+                  onClick={() => setActiveView("bar")}
+                >
+                  ← Back to bar management
+                </button>
+                <div className={styles.cycleToolbarStatus}>{cycleStatusMessage}</div>
+              </div>
+
               <section className={styles.card}>
                 <h2 className={styles.cardTitle}>Now playing</h2>
                 {sessionState && cycleForPlayer ? (
                   <div className={styles.playerArea}>
-                    <div className={styles.playerWrapper}>
-                      {isClient ? (
-                        <YouTubeEmbed
-                          videoId={cycleForPlayer.videoId}
-                          title="Coffee Talk Video"
-                          className={styles.player}
-                        />
-                      ) : (
-                        <div className={styles.playerPlaceholder}>Loading the player…</div>
+                    <div className={styles.playerColumn}>
+                      <div className={styles.playerWrapper}>
+                        {isClient ? (
+                          <YouTubeEmbed
+                            videoId={cycleForPlayer.videoId}
+                            title={cycleForPlayer.videoTitle ?? "Coffee Talk Video"}
+                            className={styles.player}
+                          />
+                        ) : (
+                          <div className={styles.playerPlaceholder}>Loading the player…</div>
+                        )}
+                      </div>
+                      {cycleForPlayer.videoTitle && (
+                        <div className={styles.videoTitle}>{cycleForPlayer.videoTitle}</div>
                       )}
                     </div>
+
                     <aside className={styles.voteSidebar}>
-                      <div className={styles.voteHeader}>Who’s the curator?</div>
-                      <div className={styles.voteSummary}>
-                        {activeCycle
-                          ? `Votes: ${votesCast}/${totalVotesNeeded}`
-                          : hasActiveSession
-                            ? "Voting is closed for this video."
-                            : "Session is not active."}
+                      <div className={styles.sidebarSection}>
+                        <div className={styles.sidebarHeading}>Cycle controls</div>
+                        <p className={styles.sessionStatus}>{cycleStatusMessage}</p>
+                        <div className={styles.cycleButtons}>
+                          <button
+                            type="button"
+                            className={`${styles.primaryButton} ${styles.cycleAction}`}
+                            onClick={handleRevealCycle}
+                            disabled={!hasIdentity || !activeCycle || revealLoading || !hasActiveSession}
+                          >
+                            {revealLoading ? "Revealing…" : "Close voting & reveal"}
+                          </button>
+                          <button
+                            type="button"
+                            className={`${styles.secondaryButton} ${styles.cycleAction}`}
+                            onClick={handleStartNextCycle}
+                            disabled={
+                              !hasIdentity ||
+                              !!activeCycle ||
+                              nextCycleLoading ||
+                              availableIngredients === 0 ||
+                              !hasActiveSession
+                            }
+                          >
+                            {nextCycleLoading ? "Queuing…" : "Start next video"}
+                          </button>
+                        </div>
                       </div>
-                      {hasIdentity ? (
-                        activeCycle ? (
-                          <ul className={styles.voteList}>
-                            {coffeeBar.hipsters.map((hipster) => (
-                              <li key={hipster.id}>
-                                <button
-                                  type="button"
-                                  className={styles.voteButton}
-                                  disabled={
-                                    hipster.id === identity?.hipsterId || alreadyVoted || revealLoading
-                                  }
-                                  onClick={() => handleCastVote(hipster.id)}
-                                >
-                                  {hipster.username}
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        ) : hasActiveSession ? (
-                          <p className={styles.sessionHint}>Voting will resume on the next video.</p>
+
+                      <div className={styles.sidebarSection}>
+                        <div className={styles.sidebarHeading}>Who’s the curator?</div>
+                        <div className={styles.voteSummary}>
+                          {activeCycle
+                            ? `Votes: ${votesCast}/${totalVotesNeeded}`
+                            : hasActiveSession
+                              ? "Voting is closed for this video."
+                              : "Session is not active."}
+                        </div>
+                        {displayReveal ? (
+                          <>
+                            <div className={styles.revealSummary}>
+                              <div>
+                                <strong>Curator:</strong>{" "}
+                                {displayReveal.correctSubmitterIds
+                                  .map((hipsterId) => hipsterNameById.get(hipsterId) ?? "Unknown")
+                                  .join(", ")}
+                              </div>
+                              <div>
+                                <strong>Correct guessers:</strong>{" "}
+                                {displayReveal.correctGuessers.length > 0
+                                  ? displayReveal.correctGuessers
+                                      .map((hipsterId) => hipsterNameById.get(hipsterId) ?? "Unknown")
+                                      .join(", ")
+                                  : "No one guessed it this time."}
+                              </div>
+                            </div>
+                            <ul className={styles.tallyList}>
+                              {Object.entries(displayReveal.tally)
+                                .sort(([, a], [, b]) => b - a)
+                                .map(([hipsterId, votes]) => (
+                                  <li key={hipsterId} className={styles.tallyRow}>
+                                    <span>{hipsterNameById.get(hipsterId) ?? "Unknown"}</span>
+                                    <span className={styles.tallyCount}>{votes}</span>
+                                  </li>
+                                ))}
+                            </ul>
+                          </>
+                        ) : hasIdentity ? (
+                          activeCycle ? (
+                            <ul className={styles.voteList}>
+                              {coffeeBar.hipsters.map((hipster) => (
+                                <li key={hipster.id}>
+                                  <button
+                                    type="button"
+                                    className={styles.voteButton}
+                                    disabled={
+                                      hipster.id === identity?.hipsterId || alreadyVoted || revealLoading
+                                    }
+                                    onClick={() => handleCastVote(hipster.id)}
+                                  >
+                                    {hipster.username}
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : hasActiveSession ? (
+                            <p className={styles.sessionHint}>Voting will resume on the next video.</p>
+                          ) : (
+                            <p className={styles.sessionHint}>Start a new session to vote again.</p>
+                          )
                         ) : (
-                          <p className={styles.sessionHint}>Start a new session to vote again.</p>
-                        )
-                      ) : (
-                        <p className={styles.sessionHint}>Join the bar to cast your vote.</p>
-                      )}
+                          <p className={styles.sessionHint}>Join the bar to cast your vote.</p>
+                        )}
+                      </div>
+
+                      <div className={styles.sidebarSection}>
+                        <div className={styles.sidebarHeading}>Hipsters in the bar</div>
+                        <ul className={styles.sidebarHipsterList}>
+                          {coffeeBar.hipsters.length === 0 && <li>No hipsters yet. Be the first to join!</li>}
+                          {coffeeBar.hipsters.map((hipster) => (
+                            <li
+                              key={hipster.id}
+                              className={identity?.hipsterId === hipster.id ? styles.me : undefined}
+                            >
+                              <span className={styles.hipsterName}>{hipster.username}</span>
+                              <span className={styles.hipsterCount}>{submissionCounts[hipster.id] ?? 0} urls</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     </aside>
                   </div>
                 ) : (
                   <p className={styles.sessionHint}>Start a session to spin up the first video.</p>
                 )}
               </section>
-
-              <div className={styles.cycleColumns}>
-                <section className={styles.card}>
-                  <h2 className={styles.cardTitle}>Cycle controls</h2>
-                  <p className={styles.sessionStatus}>
-                    {hasActiveSession
-                      ? activeCycle
-                        ? "Voting is open. Close it when your crew is ready."
-                        : latestCycle
-                          ? "Voting is closed. Reveal results or move to the next video."
-                          : "No cycle is active yet."
-                      : sessionState
-                        ? "Session has ended. Start a new session to brew again."
-                        : "No cycle is active yet."}
-                  </p>
-                  <div className={styles.cycleButtons}>
-                    <button
-                      type="button"
-                      className={`${styles.primaryButton} ${styles.cycleAction}`}
-                      onClick={handleRevealCycle}
-                      disabled={!hasIdentity || !activeCycle || revealLoading || !hasActiveSession}
-                    >
-                      {revealLoading ? "Revealing…" : "Close voting & reveal"}
-                    </button>
-                    <button
-                      type="button"
-                      className={`${styles.secondaryButton} ${styles.cycleAction}`}
-                      onClick={handleStartNextCycle}
-                      disabled={
-                        !hasIdentity || !!activeCycle || nextCycleLoading || availableIngredients === 0 || !hasActiveSession
-                      }
-                    >
-                      {nextCycleLoading ? "Queuing…" : "Start next video"}
-                    </button>
-                  </div>
-                </section>
-
-                <section className={styles.card}>
-                  <h2 className={styles.cardTitle}>Hipsters in the bar</h2>
-                  <ul className={styles.hipsterList}>
-                    {coffeeBar.hipsters.length === 0 && <li>No hipsters yet. Be the first to join!</li>}
-                    {coffeeBar.hipsters.map((hipster) => (
-                      <li key={hipster.id} className={identity?.hipsterId === hipster.id ? styles.me : undefined}>
-                        <span className={styles.hipsterName}>{hipster.username}</span>
-                        <span className={styles.hipsterCount}>{submissionCounts[hipster.id] ?? 0} urls</span>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              </div>
-
-              {displayReveal && (
-                <section className={styles.card}>
-                  <h2 className={styles.cardTitle}>Results</h2>
-                  <div className={styles.revealSummary}>
-                    <div>
-                      <strong>Curator:</strong>{" "}
-                      {displayReveal.correctSubmitterIds
-                        .map((hipsterId) => hipsterNameById.get(hipsterId) ?? "Unknown")
-                        .join(", ")}
-                    </div>
-                    <div>
-                      <strong>Correct guessers:</strong>{" "}
-                      {displayReveal.correctGuessers.length > 0
-                        ? displayReveal.correctGuessers
-                            .map((hipsterId) => hipsterNameById.get(hipsterId) ?? "Unknown")
-                            .join(", ")
-                        : "No one guessed it this time."}
-                    </div>
-                  </div>
-                  <ul className={styles.tallyList}>
-                    {Object.entries(displayReveal.tally)
-                      .sort(([, a], [, b]) => b - a)
-                      .map(([hipsterId, votes]) => (
-                        <li key={hipsterId} className={styles.tallyRow}>
-                          <span>{hipsterNameById.get(hipsterId) ?? "Unknown"}</span>
-                          <span className={styles.tallyCount}>{votes}</span>
-                        </li>
-                      ))}
-                  </ul>
-                </section>
-              )}
 
               {voteError && <div className={styles.inlineError}>{voteError}</div>}
             </div>

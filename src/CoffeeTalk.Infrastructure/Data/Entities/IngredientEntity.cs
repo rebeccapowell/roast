@@ -12,6 +12,10 @@ public sealed class IngredientEntity
 
     public bool IsConsumed { get; set; }
 
+    public string? Title { get; set; }
+
+    public string? ThumbnailUrl { get; set; }
+
     public CoffeeBarEntity? CoffeeBar { get; set; }
 
     public ICollection<SubmissionEntity> Submissions { get; set; } = new List<SubmissionEntity>();

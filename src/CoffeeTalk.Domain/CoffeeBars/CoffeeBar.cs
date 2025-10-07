@@ -103,7 +103,13 @@ public sealed class CoffeeBar
         return hipster;
     }
 
-    public Submission SubmitIngredient(Guid submissionId, Guid hipsterId, string videoId, DateTimeOffset submittedAt)
+    public Submission SubmitIngredient(
+        Guid submissionId,
+        Guid hipsterId,
+        string videoId,
+        DateTimeOffset submittedAt,
+        string? title = null,
+        string? thumbnailUrl = null)
     {
         if (_submissionsLocked)
         {
@@ -132,7 +138,9 @@ public sealed class CoffeeBar
         }
 
         var ingredient = _ingredients.FirstOrDefault(i => string.Equals(i.VideoId, normalizedVideoId, StringComparison.Ordinal))
-                        ?? CreateIngredient(normalizedVideoId, submittedAt);
+                        ?? CreateIngredient(normalizedVideoId, submittedAt, title, thumbnailUrl);
+
+        ingredient.ApplyMetadata(title, thumbnailUrl);
 
         ingredient.RegisterSubmission(hipsterId);
 
@@ -296,9 +304,9 @@ public sealed class CoffeeBar
         return cycle.Reveal(submitterIds, revealedAt);
     }
 
-    private Ingredient CreateIngredient(string videoId, DateTimeOffset createdAt)
+    private Ingredient CreateIngredient(string videoId, DateTimeOffset createdAt, string? title, string? thumbnailUrl)
     {
-        var ingredient = new Ingredient(Guid.NewGuid(), videoId, createdAt);
+        var ingredient = new Ingredient(Guid.NewGuid(), videoId, createdAt, title, thumbnailUrl);
         _ingredients.Add(ingredient);
         return ingredient;
     }
