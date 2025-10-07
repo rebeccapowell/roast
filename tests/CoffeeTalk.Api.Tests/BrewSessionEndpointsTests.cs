@@ -1,9 +1,10 @@
-using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
+using System.Threading;
 using Aspire.Hosting;
 using Aspire.Hosting.Testing;
 using CoffeeTalk.Api.Contracts;
+using CoffeeTalk.TestUtilities;
 using Shouldly;
 using Xunit;
 
@@ -11,14 +12,9 @@ namespace CoffeeTalk.Api.Tests;
 
 public class BrewSessionEndpointsTests
 {
-    [Fact]
+    [RequiresDockerFact]
     public async Task GetBrewSessions_ReturnsSeededSessions()
     {
-        if (!IsContainerRuntimeAvailable())
-        {
-            return;
-        }
-
         await using var app = await BuildAndStartAppAsync();
         await WaitForApiAsync(app);
 
@@ -30,14 +26,9 @@ public class BrewSessionEndpointsTests
         response.First().Name.ShouldBe("Latte Art Throwdown");
     }
 
-    [Fact]
+    [RequiresDockerFact]
     public async Task GetBrewSessionById_ReturnsNotFound_ForUnknownId()
     {
-        if (!IsContainerRuntimeAvailable())
-        {
-            return;
-        }
-
         await using var app = await BuildAndStartAppAsync();
         await WaitForApiAsync(app);
 
@@ -61,43 +52,4 @@ public class BrewSessionEndpointsTests
         await app.ResourceNotifications.WaitForResourceHealthyAsync("coffeetalk-api", cts.Token);
     }
 
-    private static bool IsContainerRuntimeAvailable()
-    {
-        try
-        {
-            using var process = Process.Start(new ProcessStartInfo
-            {
-                FileName = "docker",
-                Arguments = "--version",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false
-            });
-
-            if (process is null)
-            {
-                return false;
-            }
-
-            if (!process.WaitForExit(2000))
-            {
-                try
-                {
-                    process.Kill(entireProcessTree: true);
-                }
-                catch
-                {
-                    // Swallow exceptions thrown when attempting to kill a hung process.
-                }
-
-                return false;
-            }
-
-            return process.ExitCode == 0;
-        }
-        catch
-        {
-            return false;
-        }
-    }
 }
