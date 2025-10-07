@@ -26,6 +26,14 @@ public sealed class Ingredient
         _submitterIds.Add(hipsterId);
     }
 
+    internal void RemoveSubmission(Guid hipsterId)
+    {
+        if (!_submitterIds.Remove(hipsterId))
+        {
+            throw new DomainException("Hipster has not submitted this ingredient.");
+        }
+    }
+
     internal void MarkConsumed()
     {
         if (IsConsumed)
