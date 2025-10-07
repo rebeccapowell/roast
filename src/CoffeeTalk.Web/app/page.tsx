@@ -1,8 +1,8 @@
 import styles from "./page.module.css";
-import { CreateCoffeeBarForm } from "./components/CreateCoffeeBarForm";
-import { JoinCoffeeBarForm } from "./components/JoinCoffeeBarForm";
+import { CreateCoffeeBarForm } from "@/app/_components/CreateCoffeeBarForm";
+import { JoinCoffeeBarForm } from "@/app/_components/JoinCoffeeBarForm";
 
-export default function Home() {
+const Home = () => {
   return (
     <div className={styles.page}>
       <header className={styles.header}>Coffee-Time ☕🎶</header>
@@ -16,4 +16,6 @@ export default function Home() {
       </footer>
     </div>
   );
-}
+};
+
+export default Home;
