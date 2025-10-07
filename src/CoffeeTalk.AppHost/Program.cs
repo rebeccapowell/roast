@@ -1,6 +1,3 @@
-using Aspire.Hosting;
-using Aspire.Hosting.ApplicationModel;
-
 var builder = DistributedApplication.CreateBuilder(args);
 
 var postgres = builder.AddPostgres("postgres");
@@ -20,4 +17,4 @@ builder.AddNpmApp("coffeetalk-web", "../CoffeeTalk.Web")
     .WithReference(api)
     .WithEnvironment("NEXT_PUBLIC_API_BASE_URL", api.GetEndpoint("https"));
 
-builder.Build().Run();
+await builder.Build().RunAsync();
