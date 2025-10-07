@@ -8,8 +8,7 @@ import {
   getFormData,
 } from "./actionUtils";
 
-export interface JoinCoffeeBarState
-  extends ActionState<JoinCoffeeBarResponse> {}
+export type JoinCoffeeBarState = ActionState<JoinCoffeeBarResponse>;
 
 export async function joinCoffeeBarAction(
   prevState: JoinCoffeeBarState,

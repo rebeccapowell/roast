@@ -1,4 +1,71 @@
 :root {
+  --spacing-sm: 0.5rem;
+  --spacing-md: 0.75rem;
+  --spacing-lg: 0.85rem;
+  --spacing-xl: 1rem;
+  --spacing-2xl: 1.1rem;
+  --spacing-3xl: 1.25rem;
+  --spacing-4xl: 1.5rem;
+  --spacing-5xl: 1.75rem;
+  --spacing-6xl: 2rem;
+  --spacing-7xl: 2.4rem;
+  --spacing-8xl: 2.5rem;
+  --spacing-9xl: 6rem;
+
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-full: 999px;
+
+  --breakpoint-tablet: 900px;
+
+  --container-max-width: 960px;
+  --content-max-width: 40rem;
+
+  --font-size-sm: 0.95rem;
+  --font-size-base: 1rem;
+  --font-size-xl: 1.5rem;
+  --font-size-2xl: clamp(1.1rem, 1.5vw + 0.5rem, 1.5rem);
+  --font-size-3xl: clamp(2rem, 3vw + 1rem, 3rem);
+
+  --line-height-tight: 1.4;
+  --line-height-normal: 1.5;
+
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --color-primary-background: #fdf6e3;
+  --color-primary-text: #4b2e2e;
+  --color-secondary-text: #593b3b;
+  --color-tertiary-text: #6f4a3f;
+  --color-header-text: #3f2626;
+  --color-label-text: #5a3b33;
+  --color-footer-text: #7a5c5c;
+
+  --color-card-background: #fff7eb;
+  --color-input-background: #fff;
+  --color-input-border: #d3b49f;
+  --color-input-border-focus: #b5835a;
+  --color-button-background: linear-gradient(135deg, #8b5e3c, #b5835a);
+  --color-button-text: #fffaf5;
+
+  --color-success-background: rgba(139, 94, 60, 0.08);
+  --color-error-text: #b42318;
+  --color-error-background: rgba(180, 35, 24, 0.08);
+
+  --color-shadow-card: rgba(75, 46, 46, 0.08);
+  --color-shadow-button: rgba(139, 94, 60, 0.18);
+  --color-shadow-focus: rgba(181, 131, 90, 0.25);
+
+  --shadow-card: 0 12px 25px var(--color-shadow-card);
+  --shadow-button-hover: 0 8px 18px var(--color-shadow-button);
+  --shadow-focus-ring: 0 0 0 3px var(--color-shadow-focus);
+
+  --duration-fast: 0.2s;
+  --animation-ease: ease;
+
+  --font-family-primary: "Georgia", serif;
+
   color-scheme: only light;
 }
 
@@ -10,9 +77,9 @@ html,
 body {
   margin: 0;
   padding: 0;
-  font-family: "Georgia", serif;
-  background: #fdf6e3;
-  color: #4b2e2e;
+  font-family: var(--font-family-primary);
+  background: var(--color-primary-background);
+  color: var(--color-primary-text);
 }
 
 body {

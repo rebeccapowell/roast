@@ -27,8 +27,8 @@ export const JoinCoffeeBarForm = () => {
     <section className={styles.card}>
       <h2 className={styles.cardTitle}>Join a Coffee Bar</h2>
       <p className={styles.cardSubtitle}>
-        Enter the bar code you received and choose your handle. Once you're in
-        you can start queuing ingredients.
+        Enter the bar code you received and choose your handle. Once you&apos;re
+        in you can start queuing ingredients.
       </p>
       <form ref={formRef} className={styles.form} action={formAction}>
         <div className={styles.fieldGroup}>

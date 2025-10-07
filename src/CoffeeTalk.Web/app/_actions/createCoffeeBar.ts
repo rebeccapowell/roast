@@ -8,14 +8,13 @@ import {
   getFormData,
 } from "./actionUtils";
 
-export interface CreateCoffeeBarState
-  extends ActionState<{
-    id: string;
-    code: string;
-    theme: string;
-    defaultMaxIngredientsPerHipster: number;
-    submissionPolicy: SubmissionPolicy;
-  }> {}
+export type CreateCoffeeBarState = ActionState<{
+  id: string;
+  code: string;
+  theme: string;
+  defaultMaxIngredientsPerHipster: number;
+  submissionPolicy: SubmissionPolicy;
+}>;
 
 export async function createCoffeeBarAction(
   prevState: CreateCoffeeBarState,
