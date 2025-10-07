@@ -3,4 +3,5 @@ namespace CoffeeTalk.Api.Contracts.CoffeeBars;
 public sealed record BrewSessionResource(
     Guid Id,
     DateTimeOffset StartedAt,
+    DateTimeOffset? EndedAt,
     IReadOnlyList<BrewCycleResource> Cycles);

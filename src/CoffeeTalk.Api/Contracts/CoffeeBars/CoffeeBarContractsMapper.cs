@@ -72,10 +72,14 @@ public static class CoffeeBarContractsMapper
 
         var cycles = session.Cycles
             .OrderBy(cycle => cycle.StartedAt)
-            .Select(cycle => ToResource(cycle, ingredientLookup[cycle.IngredientId]))
+            .Select(cycle => ingredientLookup.TryGetValue(cycle.IngredientId, out var ingredient)
+                ? ToResource(cycle, ingredient)
+                : null)
+            .Where(resource => resource is not null)
+            .Select(resource => resource!)
             .ToList();
 
-        return new BrewSessionResource(session.Id, session.StartedAt, cycles);
+        return new BrewSessionResource(session.Id, session.StartedAt, session.EndedAt, cycles);
     }
 
     public static BrewCycleResource ToResource(BrewCycle cycle, Ingredient ingredient)

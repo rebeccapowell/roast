@@ -69,6 +69,13 @@ public static class CoffeeBarEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status404NotFound);
 
+        group.MapPost("/{code}/sessions/{sessionId:guid}/end", EndSessionAsync)
+            .WithName("EndSession")
+            .WithSummary("Ends the active brew session for a coffee bar.")
+            .Produces<SessionStateResource>()
+            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status404NotFound);
+
         group.MapPost("/{code}/sessions/{sessionId:guid}/cycles/{cycleId:guid}/votes", CastVoteAsync)
             .WithName("CastVote")
             .WithSummary("Casts a vote for the active brew cycle.")
@@ -288,6 +295,48 @@ public static class CoffeeBarEndpoints
             }
 
             var response = CoffeeBarContractsMapper.ToSessionStateResource(coffeeBar, session);
+            return TypedResults.Ok(response);
+        }
+        catch (DomainException ex)
+        {
+            return TypedResults.BadRequest(CreateProblemDetails(ex.Message));
+        }
+    }
+
+    private static async Task<Results<Ok<SessionStateResource>, BadRequest<ProblemDetails>, NotFound>> EndSessionAsync(
+        string code,
+        Guid sessionId,
+        ICoffeeBarRepository repository,
+        TimeProvider timeProvider,
+        IHubContext<CoffeeBarHub, ICoffeeBarClient> hubContext,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var coffeeBar = await repository.GetByCodeAsync(code, cancellationToken).ConfigureAwait(false);
+            if (coffeeBar is null)
+            {
+                return TypedResults.NotFound();
+            }
+
+            var session = coffeeBar.EndSession(sessionId, timeProvider.GetUtcNow());
+            await repository.UpdateAsync(coffeeBar, cancellationToken).ConfigureAwait(false);
+
+            var response = CoffeeBarContractsMapper.ToSessionStateResource(coffeeBar, session);
+
+            var group = CoffeeBarHub.GetGroupName(response.CoffeeBar.Code);
+            await hubContext
+                .Clients
+                .Group(group)
+                .CoffeeBarUpdated(response.CoffeeBar)
+                .ConfigureAwait(false);
+
+            await hubContext
+                .Clients
+                .Group(group)
+                .SessionUpdated(response)
+                .ConfigureAwait(false);
+
             return TypedResults.Ok(response);
         }
         catch (DomainException ex)
