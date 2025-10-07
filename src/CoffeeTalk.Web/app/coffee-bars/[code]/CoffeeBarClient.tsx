@@ -1,7 +1,7 @@
 "use client";
 
 import type { HubConnection } from "@microsoft/signalr";
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, memo, useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./CoffeeBarClient.module.css";
 import { getIdentity, removeIdentity, saveIdentity, type HipsterIdentity } from "../../lib/identity";
 
@@ -101,6 +101,29 @@ type CoffeeBarClientProps = {
   code: string;
 };
 
+type YouTubeEmbedProps = {
+  videoId: string;
+  title: string;
+  className?: string;
+};
+
+const YouTubeEmbed = memo(function YouTubeEmbed({ videoId, title, className }: YouTubeEmbedProps) {
+  const src = useMemo(
+    () => `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`,
+    [videoId],
+  );
+
+  return (
+    <iframe
+      className={className}
+      src={src}
+      title={title}
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      allowFullScreen
+    />
+  );
+});
+
 export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
   const normalizedCode = code.toUpperCase();
 
@@ -124,6 +147,7 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
   const [lastCycleId, setLastCycleId] = useState<string | null>(null);
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [playerCycle, setPlayerCycle] = useState<BrewCycleResource | null>(null);
+  const [isClient, setIsClient] = useState(false);
 
   const loadIdentity = useCallback(() => {
     const stored = getIdentity(normalizedCode);
@@ -180,6 +204,10 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
   useEffect(() => {
     fetchCoffeeBar();
   }, [fetchCoffeeBar]);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     if (!API_BASE_URL) {
@@ -1058,16 +1086,15 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
                 {sessionState && cycleForPlayer ? (
                   <div className={styles.playerArea}>
                     <div className={styles.playerWrapper}>
-                      <iframe
-                        key={cycleForPlayer.id}
-                        className={styles.player}
-                        src={`https://www.youtube.com/embed/${cycleForPlayer.videoId}?autoplay=${
-                          activeCycle && activeCycle.id === cycleForPlayer.id ? 1 : 0
-                        }`}
-                        title="Coffee Talk Video"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                      />
+                      {isClient ? (
+                        <YouTubeEmbed
+                          videoId={cycleForPlayer.videoId}
+                          title="Coffee Talk Video"
+                          className={styles.player}
+                        />
+                      ) : (
+                        <div className={styles.playerPlaceholder}>Loading the player…</div>
+                      )}
                     </div>
                     <aside className={styles.voteSidebar}>
                       <div className={styles.voteHeader}>Who’s the curator?</div>

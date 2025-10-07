@@ -5,6 +5,7 @@ using CoffeeTalk.Domain.BrewSessions;
 using CoffeeTalk.Domain.CoffeeBars;
 using CoffeeTalk.Infrastructure.Data.Repositories;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
 
 namespace CoffeeTalk.Api.Hubs;
 
@@ -17,18 +18,24 @@ public interface ICoffeeBarClient
     Task CycleRevealed(RevealCycleResponse response);
 }
 
-public sealed class CoffeeBarHub(ICoffeeBarRepository repository) : Hub<ICoffeeBarClient>
+public sealed class CoffeeBarHub(ICoffeeBarRepository repository, ILogger<CoffeeBarHub> logger) : Hub<ICoffeeBarClient>
 {
     private readonly ICoffeeBarRepository _repository = repository;
+    private readonly ILogger<CoffeeBarHub> _logger = logger;
 
     public static string GetGroupName(string code) => $"coffee-bar:{NormalizeCode(code)}";
 
     public async Task JoinCoffeeBar(string code, CancellationToken cancellationToken = default)
     {
-        var normalized = NormalizeCode(code);
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            _logger.LogWarning(
+                "Connection {ConnectionId} attempted to join a coffee bar without providing a code.",
+                Context.ConnectionId);
+            return;
+        }
 
-        await Groups.AddToGroupAsync(Context.ConnectionId, GetGroupName(normalized), cancellationToken)
-            .ConfigureAwait(false);
+        var normalized = NormalizeCode(code);
 
         CoffeeBar? coffeeBar;
 
@@ -36,8 +43,18 @@ public sealed class CoffeeBarHub(ICoffeeBarRepository repository) : Hub<ICoffeeB
         {
             coffeeBar = await _repository.GetByCodeAsync(normalized, cancellationToken).ConfigureAwait(false);
         }
-        catch (DomainException)
+        catch (DomainException ex)
         {
+            _logger.LogWarning(ex, "Domain error while connection {ConnectionId} joined coffee bar {Code}.", Context.ConnectionId, normalized);
+            return;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Unexpected error while loading coffee bar {Code} for connection {ConnectionId}.",
+                normalized,
+                Context.ConnectionId);
             return;
         }
 
@@ -46,37 +63,51 @@ public sealed class CoffeeBarHub(ICoffeeBarRepository repository) : Hub<ICoffeeB
             return;
         }
 
-        var coffeeBarResource = CoffeeBarContractsMapper.ToResource(coffeeBar);
-        await Clients.Caller.CoffeeBarUpdated(coffeeBarResource).ConfigureAwait(false);
+        await Groups.AddToGroupAsync(Context.ConnectionId, GetGroupName(normalized), cancellationToken)
+            .ConfigureAwait(false);
 
-        var latestSession = coffeeBar.Sessions
-            .OrderByDescending(session => session.StartedAt)
-            .FirstOrDefault();
-
-        if (latestSession is null)
+        try
         {
-            return;
+            var coffeeBarResource = CoffeeBarContractsMapper.ToResource(coffeeBar);
+            await Clients.Caller.CoffeeBarUpdated(coffeeBarResource).ConfigureAwait(false);
+
+            var latestSession = coffeeBar.Sessions
+                .OrderByDescending(session => session.StartedAt)
+                .FirstOrDefault();
+
+            if (latestSession is null)
+            {
+                return;
+            }
+
+            var sessionResource = CoffeeBarContractsMapper.ToSessionStateResource(coffeeBar, latestSession);
+            await Clients.Caller.SessionUpdated(sessionResource).ConfigureAwait(false);
+
+            var latestCycle = latestSession.Cycles
+                .OrderBy(cycle => cycle.StartedAt)
+                .LastOrDefault();
+
+            if (latestCycle is null || latestCycle.IsActive)
+            {
+                return;
+            }
+
+            var reveal = TryCreateRevealResource(coffeeBar, latestCycle);
+            if (reveal is null)
+            {
+                return;
+            }
+
+            await Clients.Caller.CycleRevealed(new RevealCycleResponse(sessionResource, reveal)).ConfigureAwait(false);
         }
-
-        var sessionResource = CoffeeBarContractsMapper.ToSessionStateResource(coffeeBar, latestSession);
-        await Clients.Caller.SessionUpdated(sessionResource).ConfigureAwait(false);
-
-        var latestCycle = latestSession.Cycles
-            .OrderBy(cycle => cycle.StartedAt)
-            .LastOrDefault();
-
-        if (latestCycle is null || latestCycle.IsActive)
+        catch (Exception ex)
         {
-            return;
+            _logger.LogError(
+                ex,
+                "Failed to send coffee bar state to connection {ConnectionId} after joining coffee bar {Code}.",
+                Context.ConnectionId,
+                normalized);
         }
-
-        var reveal = TryCreateRevealResource(coffeeBar, latestCycle);
-        if (reveal is null)
-        {
-            return;
-        }
-
-        await Clients.Caller.CycleRevealed(new RevealCycleResponse(sessionResource, reveal)).ConfigureAwait(false);
     }
 
     public Task LeaveCoffeeBar(string code, CancellationToken cancellationToken = default) =>
