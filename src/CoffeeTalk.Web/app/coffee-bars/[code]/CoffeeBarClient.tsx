@@ -83,6 +83,18 @@ type SessionStateResource = {
   session: BrewSessionResource;
 };
 
+type RevealResultResource = {
+  cycleId: string;
+  tally: Record<string, number>;
+  correctSubmitterIds: string[];
+  correctGuessers: string[];
+};
+
+type RevealCycleResponse = {
+  session: SessionStateResource;
+  reveal: RevealResultResource;
+};
+
 type CoffeeBarClientProps = {
   code: string;
 };
@@ -102,6 +114,11 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
   const [submissionLoading, setSubmissionLoading] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(false);
   const [voteError, setVoteError] = useState<string | null>(null);
+  const [revealLoading, setRevealLoading] = useState(false);
+  const [nextCycleLoading, setNextCycleLoading] = useState(false);
+  const [activeView, setActiveView] = useState<"bar" | "cycle">("bar");
+  const [revealResult, setRevealResult] = useState<RevealResultResource | null>(null);
+  const [lastCycleId, setLastCycleId] = useState<string | null>(null);
 
   const loadIdentity = useCallback(() => {
     const stored = getIdentity(normalizedCode);
@@ -185,18 +202,49 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
     return coffeeBar.ingredients.filter((ingredient) => !ingredient.isConsumed).length;
   }, [coffeeBar]);
 
-  const activeCycle = useMemo(() => {
-    if (!sessionState) {
+  const sessionCycles = useMemo(() => sessionState?.session.cycles ?? [], [sessionState]);
+
+  const activeCycle = useMemo(
+    () => sessionCycles.find((cycle) => cycle.isActive) ?? null,
+    [sessionCycles],
+  );
+
+  const latestCycle = useMemo(
+    () => (sessionCycles.length ? sessionCycles[sessionCycles.length - 1] : null),
+    [sessionCycles],
+  );
+
+  const hipsterNameById = useMemo(() => {
+    if (!coffeeBar) {
+      return new Map<string, string>();
+    }
+
+    return new Map(coffeeBar.hipsters.map((hipster) => [hipster.id, hipster.username] as const));
+  }, [coffeeBar]);
+
+  const derivedReveal = useMemo(() => {
+    if (!latestCycle || latestCycle.isActive) {
       return null;
     }
 
-    const cycles = sessionState.session.cycles;
-    if (!cycles.length) {
-      return null;
+    const tally: Record<string, number> = {};
+    for (const vote of latestCycle.votes) {
+      tally[vote.targetHipsterId] = (tally[vote.targetHipsterId] ?? 0) + 1;
     }
 
-    return cycles.find((cycle) => cycle.isActive) ?? cycles[cycles.length - 1];
-  }, [sessionState]);
+    const correctGuessers = latestCycle.votes
+      .filter((vote) => vote.isCorrect === true)
+      .map((vote) => vote.voterHipsterId);
+
+    return {
+      cycleId: latestCycle.id,
+      tally,
+      correctSubmitterIds: latestCycle.submitterIds,
+      correctGuessers,
+    } satisfies RevealResultResource;
+  }, [latestCycle]);
+
+  const displayReveal = revealResult ?? derivedReveal;
 
   const totalVotesNeeded = coffeeBar?.hipsters.length ?? 0;
   const votesCast = activeCycle?.votes.length ?? 0;
@@ -373,6 +421,25 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
     return () => window.clearInterval(interval);
   }, [sessionState, refreshSession]);
 
+  useEffect(() => {
+    if (!sessionState) {
+      setActiveView("bar");
+      setRevealResult(null);
+      setLastCycleId(null);
+      return;
+    }
+
+    if (!latestCycle) {
+      return;
+    }
+
+    if (latestCycle.id !== lastCycleId) {
+      setLastCycleId(latestCycle.id);
+      setRevealResult(null);
+      setActiveView("cycle");
+    }
+  }, [sessionState, latestCycle, lastCycleId]);
+
   const handleStartSession = useCallback(async () => {
     if (!coffeeBar) {
       return;
@@ -395,6 +462,7 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
       const state = payload as SessionStateResource;
       setCoffeeBar(state.coffeeBar);
       setSessionState(state);
+      setActiveView("cycle");
     } catch (err) {
       console.error(err);
       setVoteError("Something went wrong while starting the session.");
@@ -438,6 +506,82 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
     [identity, activeCycle, normalizedCode],
   );
 
+  const handleRevealCycle = useCallback(async () => {
+    if (!identity || !activeCycle) {
+      return;
+    }
+
+    setRevealLoading(true);
+    setVoteError(null);
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/coffee-bars/${normalizedCode}/sessions/${activeCycle.sessionId}/cycles/${activeCycle.id}/reveal`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ hipsterId: identity.hipsterId }),
+        },
+      );
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        setVoteError((payload && (payload.detail ?? payload.title)) || "We couldn't reveal this cycle.");
+        return;
+      }
+
+      const result = payload as RevealCycleResponse;
+      setCoffeeBar(result.session.coffeeBar);
+      setSessionState(result.session);
+      setRevealResult(result.reveal);
+      setActiveView("cycle");
+    } catch (err) {
+      console.error(err);
+      setVoteError("Something went wrong while revealing the cycle.");
+    } finally {
+      setRevealLoading(false);
+    }
+  }, [identity, activeCycle, normalizedCode]);
+
+  const handleStartNextCycle = useCallback(async () => {
+    if (!identity || !sessionState) {
+      return;
+    }
+
+    setNextCycleLoading(true);
+    setVoteError(null);
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/coffee-bars/${normalizedCode}/sessions/${sessionState.session.id}/cycles`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ hipsterId: identity.hipsterId }),
+        },
+      );
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        setVoteError(
+          (payload && (payload.detail ?? payload.title)) || "We couldn't start the next cycle.",
+        );
+        return;
+      }
+
+      const state = payload as SessionStateResource;
+      setCoffeeBar(state.coffeeBar);
+      setSessionState(state);
+      setRevealResult(null);
+      setActiveView("cycle");
+    } catch (err) {
+      console.error(err);
+      setVoteError("Something went wrong while starting the next cycle.");
+    } finally {
+      setNextCycleLoading(false);
+    }
+  }, [identity, sessionState, normalizedCode]);
+
   const mySubmissions = useMemo(() => {
     if (!identity || !coffeeBar) {
       return [] as { submission: SubmissionResource; ingredient?: IngredientResource }[];
@@ -475,174 +619,238 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
             </p>
           </header>
 
-          <div className={styles.layout}>
-            <aside className={styles.sidebar}>
-              <section className={styles.card}>
-                <h2 className={styles.cardTitle}>Hipsters in the bar</h2>
-                <ul className={styles.hipsterList}>
-                  {coffeeBar.hipsters.length === 0 && <li>No hipsters yet. Be the first to join!</li>}
-                  {coffeeBar.hipsters.map((hipster) => (
-                    <li key={hipster.id} className={identity?.hipsterId === hipster.id ? styles.me : undefined}>
-                      <span className={styles.hipsterName}>{hipster.username}</span>
-                      <span className={styles.hipsterCount}>{submissionCounts[hipster.id] ?? 0} urls</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
+          <div className={styles.viewSwitcher}>
+            <button
+              type="button"
+              className={`${styles.viewButton} ${activeView === "cycle" ? styles.viewButtonActive : ""}`}
+              onClick={() => setActiveView("cycle")}
+            >
+              Cycle view
+            </button>
+            <button
+              type="button"
+              className={`${styles.viewButton} ${activeView === "bar" ? styles.viewButtonActive : ""}`}
+              onClick={() => setActiveView("bar")}
+            >
+              Bar management
+            </button>
+          </div>
 
-              <section className={styles.card}>
-                <h2 className={styles.cardTitle}>Session</h2>
-                <p className={styles.sessionStatus}>
-                  {sessionState ? `Session started ${new Date(sessionState.session.startedAt).toLocaleTimeString()}` : "No active session yet."}
-                </p>
-                <button
-                  className={styles.primaryButton}
-                  type="button"
-                  onClick={handleStartSession}
-                  disabled={sessionLoading || availableIngredients === 0 || !hasIdentity}
-                >
-                  {sessionLoading ? "Starting…" : sessionState ? "Restart session" : "Start session"}
-                </button>
-                <p className={styles.sessionHint}>
-                  {availableIngredients === 0
-                    ? "Add more ingredients before brewing."
-                    : `${availableIngredients} ingredient${availableIngredients === 1 ? "" : "s"} ready to brew.`}
-                </p>
-                {!hasIdentity && <p className={styles.sessionHint}>Join the bar to control the brew.</p>}
-              </section>
-
-              {!hasIdentity && (
+          {activeView === "bar" ? (
+            <div className={styles.layout}>
+              <aside className={styles.sidebar}>
                 <section className={styles.card}>
-                  <h2 className={styles.cardTitle}>Join this bar</h2>
-                  <form className={styles.joinForm} onSubmit={handleJoin}>
-                    <input
-                      className={styles.input}
-                      value={joinUsername}
-                      onChange={(event) => setJoinUsername(event.target.value)}
-                      placeholder="Your username"
-                      required
-                      minLength={3}
-                      maxLength={20}
-                      disabled={joinLoading}
-                    />
-                    <button className={styles.primaryButton} type="submit" disabled={joinLoading}>
-                      {joinLoading ? "Joining…" : "Join"}
-                    </button>
-                  </form>
-                  {joinError && <div className={styles.inlineError}>{joinError}</div>}
+                  <h2 className={styles.cardTitle}>Hipsters in the bar</h2>
+                  <ul className={styles.hipsterList}>
+                    {coffeeBar.hipsters.length === 0 && <li>No hipsters yet. Be the first to join!</li>}
+                    {coffeeBar.hipsters.map((hipster) => (
+                      <li key={hipster.id} className={identity?.hipsterId === hipster.id ? styles.me : undefined}>
+                        <span className={styles.hipsterName}>{hipster.username}</span>
+                        <span className={styles.hipsterCount}>{submissionCounts[hipster.id] ?? 0} urls</span>
+                      </li>
+                    ))}
+                  </ul>
                 </section>
-              )}
 
-              {hasIdentity && identity && (
                 <section className={styles.card}>
-                  <h2 className={styles.cardTitle}>You're in</h2>
-                  <p className={styles.identityLine}>
-                    Signed in as <strong>{identity.username}</strong>
+                  <h2 className={styles.cardTitle}>Session</h2>
+                  <p className={styles.sessionStatus}>
+                    {sessionState
+                      ? `Session started ${new Date(sessionState.session.startedAt).toLocaleTimeString()}`
+                      : "No active session yet."}
                   </p>
+                  <button
+                    className={styles.primaryButton}
+                    type="button"
+                    onClick={handleStartSession}
+                    disabled={sessionLoading || availableIngredients === 0 || !hasIdentity}
+                  >
+                    {sessionLoading ? "Starting…" : sessionState ? "Restart session" : "Start session"}
+                  </button>
+                  <p className={styles.sessionHint}>
+                    {availableIngredients === 0
+                      ? "Add more ingredients before brewing."
+                      : `${availableIngredients} ingredient${availableIngredients === 1 ? "" : "s"} ready to brew.`}
+                  </p>
+                  {!hasIdentity && <p className={styles.sessionHint}>Join the bar to control the brew.</p>}
                 </section>
-              )}
-            </aside>
 
-            <main className={styles.main}>
-              {hasIdentity ? (
-                <section className={styles.card}>
-                  <h2 className={styles.cardTitle}>Submit a new ingredient</h2>
-                  <form className={styles.submitForm} onSubmit={handleSubmitIngredient}>
-                    <input
-                      className={styles.input}
-                      value={urlInput}
-                      onChange={(event) => setUrlInput(event.target.value)}
-                      placeholder="Paste a YouTube URL"
-                      required
-                      disabled={submissionLoading || coffeeBar.submissionsLocked}
-                    />
-                    <button className={styles.primaryButton} type="submit" disabled={submissionLoading || coffeeBar.submissionsLocked}>
-                      {submissionLoading ? "Submitting…" : "Submit"}
-                    </button>
-                  </form>
-                  {coffeeBar.submissionsLocked && (
-                    <p className={styles.sessionHint}>Submissions are locked while brewing.</p>
-                  )}
-                </section>
-              ) : (
-                <section className={styles.card}>
-                  <h2 className={styles.cardTitle}>Ready to brew?</h2>
-                  <p className={styles.sessionHint}>Join the bar from the left column to start submitting your favourite tracks.</p>
-                </section>
-              )}
+                {!hasIdentity && (
+                  <section className={styles.card}>
+                    <h2 className={styles.cardTitle}>Join this bar</h2>
+                    <form className={styles.joinForm} onSubmit={handleJoin}>
+                      <input
+                        className={styles.input}
+                        value={joinUsername}
+                        onChange={(event) => setJoinUsername(event.target.value)}
+                        placeholder="Your username"
+                        required
+                        minLength={3}
+                        maxLength={20}
+                        disabled={joinLoading}
+                      />
+                      <button className={styles.primaryButton} type="submit" disabled={joinLoading}>
+                        {joinLoading ? "Joining…" : "Join"}
+                      </button>
+                    </form>
+                    {joinError && <div className={styles.inlineError}>{joinError}</div>}
+                  </section>
+                )}
 
-              {hasIdentity && (
+                {hasIdentity && identity && (
+                  <section className={styles.card}>
+                    <h2 className={styles.cardTitle}>You’re in</h2>
+                    <p className={styles.identityLine}>
+                      Signed in as <strong>{identity.username}</strong>
+                    </p>
+                  </section>
+                )}
+              </aside>
+
+              <main className={styles.main}>
+                {hasIdentity ? (
+                  <section className={styles.card}>
+                    <h2 className={styles.cardTitle}>Submit a new ingredient</h2>
+                    <form className={styles.submitForm} onSubmit={handleSubmitIngredient}>
+                      <input
+                        className={styles.input}
+                        value={urlInput}
+                        onChange={(event) => setUrlInput(event.target.value)}
+                        placeholder="Paste a YouTube URL"
+                        required
+                        disabled={submissionLoading || coffeeBar.submissionsLocked}
+                      />
+                      <button
+                        className={styles.primaryButton}
+                        type="submit"
+                        disabled={submissionLoading || coffeeBar.submissionsLocked}
+                      >
+                        {submissionLoading ? "Submitting…" : "Submit"}
+                      </button>
+                    </form>
+                    {coffeeBar.submissionsLocked && (
+                      <p className={styles.sessionHint}>Submissions are locked while brewing.</p>
+                    )}
+                  </section>
+                ) : (
+                  <section className={styles.card}>
+                    <h2 className={styles.cardTitle}>Ready to brew?</h2>
+                    <p className={styles.sessionHint}>
+                      Join the bar from the left column to start submitting your favourite tracks.
+                    </p>
+                  </section>
+                )}
+
+                {hasIdentity && (
+                  <section className={styles.card}>
+                    <h2 className={styles.cardTitle}>Your submissions</h2>
+                    {mySubmissions.length === 0 ? (
+                      <p className={styles.sessionHint}>You haven’t queued any videos yet.</p>
+                    ) : (
+                      <ul className={styles.submissionList}>
+                        {mySubmissions.map(({ submission, ingredient }) => (
+                          <li key={submission.id}>
+                            <div className={styles.submissionRow}>
+                              <span>
+                                {ingredient ? (
+                                  <a
+                                    className={styles.shareAnchor}
+                                    href={`https://youtu.be/${ingredient.videoId}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    https://youtu.be/{ingredient.videoId}
+                                  </a>
+                                ) : (
+                                  "Unknown video"
+                                )}
+                              </span>
+                              <button
+                                type="button"
+                                className={styles.secondaryButton}
+                                onClick={() => handleRemoveSubmission(submission.id)}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+                )}
+
                 <section className={styles.card}>
-                  <h2 className={styles.cardTitle}>Your submissions</h2>
-                  {mySubmissions.length === 0 ? (
-                    <p className={styles.sessionHint}>You haven't queued any videos yet.</p>
+                  <h2 className={styles.cardTitle}>Live cycle</h2>
+                  {sessionState ? (
+                    <>
+                      <p className={styles.sessionHint}>
+                        {activeCycle
+                          ? "A video is brewing right now. Switch to the cycle view to manage voting."
+                          : latestCycle
+                            ? "Voting is closed for this video. Head to the cycle view to reveal results or start the next brew."
+                            : "Session is ready to begin brewing."}
+                      </p>
+                      <button
+                        type="button"
+                        className={`${styles.primaryButton} ${styles.cycleAction}`}
+                        onClick={() => setActiveView("cycle")}
+                      >
+                        Open cycle view
+                      </button>
+                    </>
                   ) : (
-                    <ul className={styles.submissionList}>
-                      {mySubmissions.map(({ submission, ingredient }) => (
-                        <li key={submission.id}>
-                          <div className={styles.submissionRow}>
-                            <span>
-                              {ingredient ? (
-                                <a
-                                  className={styles.shareAnchor}
-                                  href={`https://youtu.be/${ingredient.videoId}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                >
-                                  https://youtu.be/{ingredient.videoId}
-                                </a>
-                              ) : (
-                                "Unknown video"
-                              )}
-                            </span>
-                            <button
-                              type="button"
-                              className={styles.secondaryButton}
-                              onClick={() => handleRemoveSubmission(submission.id)}
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
+                    <p className={styles.sessionHint}>Start a session to brew the first video.</p>
                   )}
                 </section>
-              )}
 
+                {voteError && <div className={styles.inlineError}>{voteError}</div>}
+              </main>
+            </div>
+          ) : (
+            <div className={styles.cycleView}>
               <section className={styles.card}>
                 <h2 className={styles.cardTitle}>Now playing</h2>
-                {sessionState && activeCycle ? (
+                {sessionState && latestCycle ? (
                   <div className={styles.playerArea}>
                     <div className={styles.playerWrapper}>
                       <iframe
+                        key={latestCycle.id}
                         className={styles.player}
-                        src={`https://www.youtube.com/embed/${activeCycle.videoId}?autoplay=1`}
+                        src={`https://www.youtube.com/embed/${latestCycle.videoId}?autoplay=${activeCycle ? 1 : 0}`}
                         title="Coffee Talk Video"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
                       />
                     </div>
                     <aside className={styles.voteSidebar}>
-                      <div className={styles.voteHeader}>Who's the curator?</div>
+                      <div className={styles.voteHeader}>Who’s the curator?</div>
                       <div className={styles.voteSummary}>
-                        Votes: {votesCast}/{totalVotesNeeded}
+                        {activeCycle
+                          ? `Votes: ${votesCast}/${totalVotesNeeded}`
+                          : "Voting is closed for this video."}
                       </div>
                       {hasIdentity ? (
-                        <ul className={styles.voteList}>
-                          {coffeeBar.hipsters.map((hipster) => (
-                            <li key={hipster.id}>
-                              <button
-                                type="button"
-                                className={styles.voteButton}
-                                disabled={hipster.id === identity.hipsterId || alreadyVoted}
-                                onClick={() => handleCastVote(hipster.id)}
-                              >
-                                {hipster.username}
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
+                        activeCycle ? (
+                          <ul className={styles.voteList}>
+                            {coffeeBar.hipsters.map((hipster) => (
+                              <li key={hipster.id}>
+                                <button
+                                  type="button"
+                                  className={styles.voteButton}
+                                  disabled={
+                                    hipster.id === identity.hipsterId || alreadyVoted || revealLoading
+                                  }
+                                  onClick={() => handleCastVote(hipster.id)}
+                                >
+                                  {hipster.username}
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className={styles.sessionHint}>Voting will resume on the next video.</p>
+                        )
                       ) : (
                         <p className={styles.sessionHint}>Join the bar to cast your vote.</p>
                       )}
@@ -653,9 +861,87 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
                 )}
               </section>
 
+              <div className={styles.cycleColumns}>
+                <section className={styles.card}>
+                  <h2 className={styles.cardTitle}>Cycle controls</h2>
+                  <p className={styles.sessionStatus}>
+                    {activeCycle
+                      ? "Voting is open. Close it when your crew is ready."
+                      : latestCycle
+                        ? "Voting is closed. Reveal results or move to the next video."
+                        : "No cycle is active yet."}
+                  </p>
+                  <div className={styles.cycleButtons}>
+                    <button
+                      type="button"
+                      className={`${styles.primaryButton} ${styles.cycleAction}`}
+                      onClick={handleRevealCycle}
+                      disabled={!hasIdentity || !activeCycle || revealLoading}
+                    >
+                      {revealLoading ? "Revealing…" : "Close voting & reveal"}
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.secondaryButton} ${styles.cycleAction}`}
+                      onClick={handleStartNextCycle}
+                      disabled={
+                        !hasIdentity || !!activeCycle || nextCycleLoading || availableIngredients === 0
+                      }
+                    >
+                      {nextCycleLoading ? "Queuing…" : "Start next video"}
+                    </button>
+                  </div>
+                </section>
+
+                <section className={styles.card}>
+                  <h2 className={styles.cardTitle}>Hipsters in the bar</h2>
+                  <ul className={styles.hipsterList}>
+                    {coffeeBar.hipsters.length === 0 && <li>No hipsters yet. Be the first to join!</li>}
+                    {coffeeBar.hipsters.map((hipster) => (
+                      <li key={hipster.id} className={identity?.hipsterId === hipster.id ? styles.me : undefined}>
+                        <span className={styles.hipsterName}>{hipster.username}</span>
+                        <span className={styles.hipsterCount}>{submissionCounts[hipster.id] ?? 0} urls</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              </div>
+
+              {displayReveal && (
+                <section className={styles.card}>
+                  <h2 className={styles.cardTitle}>Results</h2>
+                  <div className={styles.revealSummary}>
+                    <div>
+                      <strong>Curator:</strong>{" "}
+                      {displayReveal.correctSubmitterIds
+                        .map((hipsterId) => hipsterNameById.get(hipsterId) ?? "Unknown")
+                        .join(", ")}
+                    </div>
+                    <div>
+                      <strong>Correct guessers:</strong>{" "}
+                      {displayReveal.correctGuessers.length > 0
+                        ? displayReveal.correctGuessers
+                            .map((hipsterId) => hipsterNameById.get(hipsterId) ?? "Unknown")
+                            .join(", ")
+                        : "No one guessed it this time."}
+                    </div>
+                  </div>
+                  <ul className={styles.tallyList}>
+                    {Object.entries(displayReveal.tally)
+                      .sort(([, a], [, b]) => b - a)
+                      .map(([hipsterId, votes]) => (
+                        <li key={hipsterId} className={styles.tallyRow}>
+                          <span>{hipsterNameById.get(hipsterId) ?? "Unknown"}</span>
+                          <span className={styles.tallyCount}>{votes}</span>
+                        </li>
+                      ))}
+                  </ul>
+                </section>
+              )}
+
               {voteError && <div className={styles.inlineError}>{voteError}</div>}
-            </main>
-          </div>
+            </div>
+          )}
         </>
       ) : null}
     </div>

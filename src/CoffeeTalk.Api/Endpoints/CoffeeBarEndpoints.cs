@@ -74,6 +74,20 @@ public static class CoffeeBarEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status404NotFound);
 
+        group.MapPost("/{code}/sessions/{sessionId:guid}/cycles", StartNextCycleAsync)
+            .WithName("StartNextCycle")
+            .WithSummary("Starts the next brew cycle for a session.")
+            .Produces<SessionStateResource>()
+            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status404NotFound);
+
+        group.MapPost("/{code}/sessions/{sessionId:guid}/cycles/{cycleId:guid}/reveal", RevealCycleAsync)
+            .WithName("RevealCycle")
+            .WithSummary("Reveals the results for a brew cycle and closes voting.")
+            .Produces<RevealCycleResponse>()
+            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status404NotFound);
+
         return endpoints;
     }
 
@@ -282,6 +296,99 @@ public static class CoffeeBarEndpoints
             }
 
             var response = CoffeeBarContractsMapper.ToSessionStateResource(coffeeBar, session);
+            return TypedResults.Ok(response);
+        }
+        catch (DomainException ex)
+        {
+            return TypedResults.BadRequest(CreateProblemDetails(ex.Message));
+        }
+    }
+
+    private static async Task<Results<Ok<SessionStateResource>, BadRequest<ProblemDetails>, NotFound>> StartNextCycleAsync(
+        string code,
+        Guid sessionId,
+        StartNextCycleRequest request,
+        ICoffeeBarRepository repository,
+        INextIngredientSelector ingredientSelector,
+        TimeProvider timeProvider,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (request.HipsterId == Guid.Empty)
+            {
+                throw new DomainException("Hipster identifier is required.");
+            }
+
+            var coffeeBar = await repository.GetByCodeAsync(code, cancellationToken).ConfigureAwait(false);
+            if (coffeeBar is null)
+            {
+                return TypedResults.NotFound();
+            }
+
+            if (coffeeBar.Hipsters.All(hipster => hipster.Id != request.HipsterId))
+            {
+                throw new DomainException("Hipster must be part of the coffee bar.");
+            }
+
+            coffeeBar.StartNextCycle(sessionId, Guid.NewGuid(), timeProvider.GetUtcNow(), ingredientSelector);
+            await repository.UpdateAsync(coffeeBar, cancellationToken).ConfigureAwait(false);
+
+            var session = coffeeBar.Sessions.FirstOrDefault(session => session.Id == sessionId);
+            if (session is null)
+            {
+                return TypedResults.NotFound();
+            }
+
+            var response = CoffeeBarContractsMapper.ToSessionStateResource(coffeeBar, session);
+            return TypedResults.Ok(response);
+        }
+        catch (DomainException ex)
+        {
+            return TypedResults.BadRequest(CreateProblemDetails(ex.Message));
+        }
+    }
+
+    private static async Task<Results<Ok<RevealCycleResponse>, BadRequest<ProblemDetails>, NotFound>> RevealCycleAsync(
+        string code,
+        Guid sessionId,
+        Guid cycleId,
+        RevealCycleRequest request,
+        ICoffeeBarRepository repository,
+        TimeProvider timeProvider,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (request.HipsterId == Guid.Empty)
+            {
+                throw new DomainException("Hipster identifier is required.");
+            }
+
+            var coffeeBar = await repository.GetByCodeAsync(code, cancellationToken).ConfigureAwait(false);
+            if (coffeeBar is null)
+            {
+                return TypedResults.NotFound();
+            }
+
+            if (coffeeBar.Hipsters.All(hipster => hipster.Id != request.HipsterId))
+            {
+                throw new DomainException("Hipster must be part of the coffee bar.");
+            }
+
+            var result = coffeeBar.Reveal(cycleId, timeProvider.GetUtcNow());
+            await repository.UpdateAsync(coffeeBar, cancellationToken).ConfigureAwait(false);
+
+            var session = coffeeBar.Sessions.FirstOrDefault(session => session.Id == sessionId);
+            if (session is null)
+            {
+                return TypedResults.NotFound();
+            }
+
+            var response = new RevealCycleResponse(
+                CoffeeBarContractsMapper.ToSessionStateResource(coffeeBar, session),
+                CoffeeBarContractsMapper.ToResource(result));
+
             return TypedResults.Ok(response);
         }
         catch (DomainException ex)

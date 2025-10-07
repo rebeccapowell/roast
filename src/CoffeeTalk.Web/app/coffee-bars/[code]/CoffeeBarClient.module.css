@@ -64,6 +64,34 @@
   color: #6f4a3f;
 }
 
+.viewSwitcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.viewButton {
+  border: none;
+  border-radius: 999px;
+  padding: 0.6rem 1.4rem;
+  background: rgba(139, 94, 60, 0.16);
+  color: #5a3b33;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.viewButton:hover {
+  background: rgba(139, 94, 60, 0.25);
+}
+
+.viewButtonActive {
+  background: #8b5e3c;
+  color: #fffaf5;
+}
+
 .layout {
   display: flex;
   flex-direction: column;
@@ -245,6 +273,47 @@
   background: rgba(139, 94, 60, 0.12);
 }
 
+.secondaryButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cycleView {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.cycleColumns {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+@media (min-width: 900px) {
+  .cycleColumns {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .cycleColumns > section {
+    flex: 1;
+  }
+}
+
+.cycleButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.cycleAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 12rem;
+}
+
 .playerArea {
   display: flex;
   flex-direction: column;
@@ -323,4 +392,37 @@
 .voteButton:not(:disabled):hover {
   transform: translateY(-1px);
   box-shadow: 0 8px 18px rgba(75, 46, 46, 0.18);
+}
+
+.revealSummary {
+  background: rgba(139, 94, 60, 0.12);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.95rem;
+}
+
+.tallyList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tallyRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(139, 94, 60, 0.1);
+  padding: 0.6rem 0.9rem;
+  border-radius: 10px;
+}
+
+.tallyCount {
+  font-weight: 700;
+  color: #5a3b33;
 }

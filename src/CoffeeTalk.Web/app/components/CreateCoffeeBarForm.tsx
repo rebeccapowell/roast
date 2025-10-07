@@ -205,7 +205,7 @@ export function CreateCoffeeBarForm() {
             </div>
           )}
           <div className={styles.identityHint}>
-            You're in! We saved your handle (<strong>{result.hipster.username}</strong>) so you can dive back into the bar instantly.
+            You’re in! We saved your handle (<strong>{result.hipster.username}</strong>) so you can dive back into the bar instantly.
           </div>
         </div>
       )}

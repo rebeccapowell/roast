@@ -1,3 +1,4 @@
+using System.Linq;
 using CoffeeTalk.Domain.BrewSessions;
 using CoffeeTalk.Domain.CoffeeBars;
 
@@ -112,5 +113,16 @@ public static class CoffeeBarContractsMapper
         ArgumentNullException.ThrowIfNull(session);
 
         return new SessionStateResource(ToResource(coffeeBar), ToResource(session, coffeeBar));
+    }
+
+    public static RevealResultResource ToResource(RevealResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+
+        var tally = result.Tally.ToDictionary(pair => pair.Key, pair => pair.Value);
+        var submitters = result.CorrectSubmitterIds.ToList();
+        var guessers = result.CorrectGuessers.ToList();
+
+        return new RevealResultResource(result.CycleId, tally, submitters, guessers);
     }
 }
