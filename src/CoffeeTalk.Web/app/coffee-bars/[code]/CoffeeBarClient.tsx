@@ -1,6 +1,6 @@
 "use client";
 
-import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
+import type { HubConnection } from "@microsoft/signalr";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./CoffeeBarClient.module.css";
 import { getIdentity, removeIdentity, saveIdentity, type HipsterIdentity } from "../../lib/identity";
@@ -169,12 +169,7 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
     }
 
     let isActive = true;
-
-    const connection = new HubConnectionBuilder()
-      .withUrl(`${API_BASE_URL}/hubs/coffee-bar`)
-      .withAutomaticReconnect()
-      .configureLogging(LogLevel.Warning)
-      .build();
+    let connection: HubConnection | null = null;
 
     const handleCoffeeBarUpdated = (resource: CoffeeBarResource) => {
       if (!isActive) {
@@ -202,67 +197,101 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
       setCoffeeBar(response.session.coffeeBar);
       setSessionState(response.session);
       setRevealResult(response.reveal);
+      setLastCycleId(response.session.session.cycles.at(-1)?.id ?? null);
       setActiveView("cycle");
     };
 
-    connection.on("CoffeeBarUpdated", handleCoffeeBarUpdated);
-    connection.on("SessionUpdated", handleSessionUpdated);
-    connection.on("CycleRevealed", handleCycleRevealed);
-
-    connection.onreconnecting(() => {
+    const handleReconnecting = () => {
       if (!isActive) {
         return;
       }
 
       setRealtimeConnected(false);
-    });
+    };
 
-    connection.onclose(() => {
+    const handleClosed = () => {
       if (!isActive) {
         return;
       }
 
       setRealtimeConnected(false);
-    });
+    };
 
-    connection.onreconnected(async () => {
+    const handleReconnected = async () => {
       if (!isActive) {
         return;
       }
 
       setRealtimeConnected(true);
       try {
-        await connection.invoke("JoinCoffeeBar", normalizedCode);
+        await connection?.invoke("JoinCoffeeBar", normalizedCode);
       } catch (err) {
         console.error("Failed to rejoin coffee bar group", err);
       }
-    });
+    };
 
-    const startConnection = async () => {
+    const setupConnection = async () => {
       try {
-        await connection.start();
+        const signalR = await import("@microsoft/signalr");
         if (!isActive) {
           return;
         }
 
-        setRealtimeConnected(true);
-        await connection.invoke("JoinCoffeeBar", normalizedCode);
+        connection = new signalR.HubConnectionBuilder()
+          .withUrl(`${API_BASE_URL}/hubs/coffee-bar`)
+          .withAutomaticReconnect()
+          .configureLogging(signalR.LogLevel.Warning)
+          .build();
+
+        connection.on("CoffeeBarUpdated", handleCoffeeBarUpdated);
+        connection.on("SessionUpdated", handleSessionUpdated);
+        connection.on("CycleRevealed", handleCycleRevealed);
+        connection.onreconnecting(handleReconnecting);
+        connection.onclose(handleClosed);
+        connection.onreconnected(handleReconnected);
+
+        try {
+          await connection.start();
+          if (!isActive) {
+            return;
+          }
+
+          setRealtimeConnected(true);
+          await connection.invoke("JoinCoffeeBar", normalizedCode);
+        } catch (err) {
+          if (!isActive) {
+            return;
+          }
+
+          console.error("Failed to establish realtime connection", err);
+          setRealtimeConnected(false);
+        }
       } catch (err) {
         if (!isActive) {
           return;
         }
 
-        console.error("Failed to establish realtime connection", err);
+        console.error("Failed to load realtime client", err);
+        setRealtimeConnected(false);
       }
     };
 
-    void startConnection();
+    void setupConnection();
 
     return () => {
       isActive = false;
+      setRealtimeConnected(false);
+
+      if (!connection) {
+        return;
+      }
+
       connection.off("CoffeeBarUpdated", handleCoffeeBarUpdated);
       connection.off("SessionUpdated", handleSessionUpdated);
       connection.off("CycleRevealed", handleCycleRevealed);
+      connection.onreconnecting(() => {});
+      connection.onclose(() => {});
+      connection.onreconnected(() => {});
       void connection.invoke("LeaveCoffeeBar", normalizedCode).catch(() => {});
       void connection.stop().catch(() => {});
     };
@@ -946,7 +975,7 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
                                   type="button"
                                   className={styles.voteButton}
                                   disabled={
-                                    hipster.id === identity.hipsterId || alreadyVoted || revealLoading
+                                    hipster.id === identity?.hipsterId || alreadyVoted || revealLoading
                                   }
                                   onClick={() => handleCastVote(hipster.id)}
                                 >
