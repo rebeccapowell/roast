@@ -1,7 +1,7 @@
 "use client";
 
 import type { HubConnection } from "@microsoft/signalr";
-import { FormEvent, memo, useCallback, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, memo, useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./CoffeeBarClient.module.css";
 import { getIdentity, removeIdentity, saveIdentity, type HipsterIdentity } from "../../lib/identity";
 
@@ -102,6 +102,29 @@ type RevealCycleResponse = {
   reveal: RevealResultResource;
 };
 
+type LeaderboardTrend = "stable" | "up" | "down";
+
+type LeaderboardEntryResource = {
+  hipsterId: string;
+  username: string;
+  score: number;
+  rank: number;
+  previousRank: number | null;
+  trend: LeaderboardTrend;
+};
+
+type SessionLeaderboardResource = {
+  sessionId: string;
+  startedAt: string;
+  endedAt: string | null;
+  entries: LeaderboardEntryResource[];
+};
+
+type CoffeeBarLeaderboardResource = {
+  overall: LeaderboardEntryResource[];
+  sessions: SessionLeaderboardResource[];
+};
+
 type CoffeeBarClientProps = {
   code: string;
 };
@@ -147,12 +170,20 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
   const [voteError, setVoteError] = useState<string | null>(null);
   const [revealLoading, setRevealLoading] = useState(false);
   const [nextCycleLoading, setNextCycleLoading] = useState(false);
-  const [activeView, setActiveView] = useState<"bar" | "cycle">("bar");
+  const [activeView, setActiveView] = useState<"bar" | "cycle" | "leaderboard">("bar");
   const [revealResult, setRevealResult] = useState<RevealResultResource | null>(null);
   const [lastCycleId, setLastCycleId] = useState<string | null>(null);
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [playerCycle, setPlayerCycle] = useState<BrewCycleResource | null>(null);
   const [isClient, setIsClient] = useState(false);
+  const OVERALL_LEADERBOARD = "overall" as const;
+  const [leaderboard, setLeaderboard] = useState<CoffeeBarLeaderboardResource | null>(null);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
+  const [leaderboardStale, setLeaderboardStale] = useState(true);
+  const [selectedLeaderboardSessionId, setSelectedLeaderboardSessionId] = useState<string>(
+    OVERALL_LEADERBOARD,
+  );
 
   const loadIdentity = useCallback(() => {
     const stored = getIdentity(normalizedCode);
@@ -202,6 +233,32 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
     }
   }, [requestCoffeeBar]);
 
+  const fetchLeaderboard = useCallback(async () => {
+    setLeaderboardLoading(true);
+    setLeaderboardError(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/coffee-bars/${normalizedCode}/leaderboard`);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(
+          (payload && (payload.detail ?? payload.title)) || "Unable to load leaderboard standings.",
+        );
+      }
+
+      const payload = (await response.json()) as CoffeeBarLeaderboardResource;
+      setLeaderboard(payload);
+    } catch (err) {
+      console.error(err);
+      setLeaderboardError(
+        err instanceof Error ? err.message : "Unable to load leaderboard standings.",
+      );
+    } finally {
+      setLeaderboardLoading(false);
+      setLeaderboardStale(false);
+    }
+  }, [normalizedCode]);
+
   useEffect(() => {
     loadIdentity();
   }, [loadIdentity]);
@@ -211,8 +268,42 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
   }, [fetchCoffeeBar]);
 
   useEffect(() => {
+    setLeaderboard(null);
+    setLeaderboardError(null);
+    setLeaderboardStale(true);
+    setSelectedLeaderboardSessionId(OVERALL_LEADERBOARD);
+  }, [normalizedCode]);
+
+  useEffect(() => {
     setIsClient(true);
   }, []);
+
+  useEffect(() => {
+    if (coffeeBar || sessionState) {
+      setLeaderboardStale(true);
+    }
+  }, [coffeeBar, sessionState]);
+
+  useEffect(() => {
+    if (activeView !== "leaderboard" || !leaderboardStale || leaderboardLoading) {
+      return;
+    }
+
+    void fetchLeaderboard();
+  }, [activeView, leaderboardStale, leaderboardLoading, fetchLeaderboard]);
+
+  useEffect(() => {
+    if (!leaderboard) {
+      return;
+    }
+
+    if (
+      selectedLeaderboardSessionId !== OVERALL_LEADERBOARD &&
+      !leaderboard.sessions.some((session) => session.sessionId === selectedLeaderboardSessionId)
+    ) {
+      setSelectedLeaderboardSessionId(OVERALL_LEADERBOARD);
+    }
+  }, [leaderboard, selectedLeaderboardSessionId, OVERALL_LEADERBOARD]);
 
   useEffect(() => {
     if (!API_BASE_URL) {
@@ -424,6 +515,140 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
 
     return new Map(coffeeBar.hipsters.map((hipster) => [hipster.id, hipster.username] as const));
   }, [coffeeBar]);
+
+  const sortedLeaderboardSessions = useMemo(() => {
+    if (!leaderboard) {
+      return [] as SessionLeaderboardResource[];
+    }
+
+    return [...leaderboard.sessions].sort(
+      (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
+    );
+  }, [leaderboard]);
+
+  const displayedLeaderboardEntries = useMemo(() => {
+    if (!leaderboard) {
+      return [] as LeaderboardEntryResource[];
+    }
+
+    if (selectedLeaderboardSessionId === OVERALL_LEADERBOARD) {
+      return leaderboard.overall;
+    }
+
+    return (
+      leaderboard.sessions.find((session) => session.sessionId === selectedLeaderboardSessionId)?.entries ?? []
+    );
+  }, [leaderboard, selectedLeaderboardSessionId, OVERALL_LEADERBOARD]);
+
+  const selectedLeaderboardSession = useMemo(() => {
+    if (!leaderboard || selectedLeaderboardSessionId === OVERALL_LEADERBOARD) {
+      return null;
+    }
+
+    return leaderboard.sessions.find((session) => session.sessionId === selectedLeaderboardSessionId) ?? null;
+  }, [leaderboard, selectedLeaderboardSessionId, OVERALL_LEADERBOARD]);
+
+  const showTrendColumn = selectedLeaderboardSessionId === OVERALL_LEADERBOARD;
+
+  const myLeaderboardEntry = useMemo(() => {
+    if (!identity || !leaderboard) {
+      return null;
+    }
+
+    return leaderboard.overall.find((entry) => entry.hipsterId === identity.hipsterId) ?? null;
+  }, [identity, leaderboard]);
+
+  const myTrendMessage = useMemo(() => {
+    if (!myLeaderboardEntry) {
+      return null;
+    }
+
+    switch (myLeaderboardEntry.trend) {
+      case "up": {
+        const change = myLeaderboardEntry.previousRank
+          ? myLeaderboardEntry.previousRank - myLeaderboardEntry.rank
+          : 0;
+        return change > 0
+          ? `You're climbing the leaderboard (up ${change} place${change === 1 ? "" : "s"}). Keep it brewing!`
+          : "You're climbing the leaderboard. Keep it brewing!";
+      }
+      case "down": {
+        const change = myLeaderboardEntry.previousRank
+          ? myLeaderboardEntry.rank - myLeaderboardEntry.previousRank
+          : 0;
+        return change > 0
+          ? `You're slipping ${change} place${change === 1 ? "" : "s"} on the leaderboard. Time for a comeback.`
+          : "You're slipping on the leaderboard. Time for a comeback.";
+      }
+      default:
+        return "You're holding steady on the leaderboard.";
+    }
+  }, [myLeaderboardEntry]);
+
+  const selectedLeaderboardSummary = useMemo(() => {
+    if (!selectedLeaderboardSession) {
+      return null;
+    }
+
+    const started = new Date(selectedLeaderboardSession.startedAt).toLocaleString();
+    if (selectedLeaderboardSession.endedAt) {
+      const ended = new Date(selectedLeaderboardSession.endedAt).toLocaleString();
+      return `Session ran from ${started} to ${ended}.`;
+    }
+
+    return `Session started ${started} and is still active.`;
+  }, [selectedLeaderboardSession]);
+
+  const renderTrendIndicator = useCallback(
+    (entry: LeaderboardEntryResource) => {
+      if (!showTrendColumn) {
+        return "—";
+      }
+
+      if (entry.previousRank == null) {
+        return "—";
+      }
+
+      if (entry.trend === "up") {
+        const delta = entry.previousRank - entry.rank;
+        const title = delta === 1 ? "Up 1 place since last cycle" : `Up ${delta} places since last cycle`;
+        return (
+          <span className={`${styles.leaderboardTrendIndicator} ${styles.leaderboardTrendUp}`} title={title}>
+            ↑{delta}
+          </span>
+        );
+      }
+
+      if (entry.trend === "down") {
+        const delta = entry.rank - entry.previousRank;
+        const title = delta === 1 ? "Down 1 place since last cycle" : `Down ${delta} places since last cycle`;
+        return (
+          <span className={`${styles.leaderboardTrendIndicator} ${styles.leaderboardTrendDown}`} title={title}>
+            ↓{delta}
+          </span>
+        );
+      }
+
+      return (
+        <span className={styles.leaderboardTrendIndicator} title="No change since last cycle">
+          →
+        </span>
+      );
+    },
+    [showTrendColumn],
+  );
+
+  const handleLeaderboardSessionChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
+    setSelectedLeaderboardSessionId(event.target.value);
+  }, []);
+
+  const handleRefreshLeaderboard = useCallback(() => {
+    if (leaderboardLoading) {
+      return;
+    }
+
+    setLeaderboardStale(true);
+  }, [leaderboardLoading]);
 
   const derivedReveal = useMemo(() => {
     if (!latestCycle || latestCycle.isActive) {
@@ -916,6 +1141,13 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
                 >
                   Bar management
                 </button>
+                <button
+                  type="button"
+                  className={`${styles.viewButton} ${activeView === "leaderboard" ? styles.viewButtonActive : ""}`}
+                  onClick={() => setActiveView("leaderboard")}
+                >
+                  Leaderboard
+                </button>
               </div>
             </div>
           </header>
@@ -1135,7 +1367,7 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
                 {voteError && <div className={styles.inlineError}>{voteError}</div>}
               </main>
             </div>
-          ) : (
+          ) : activeView === "cycle" ? (
             <div className={styles.cycleView}>
               <div className={styles.cycleToolbar}>
                 <button
@@ -1288,6 +1520,96 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
               </section>
 
               {voteError && <div className={styles.inlineError}>{voteError}</div>}
+            </div>
+          ) : (
+            <div className={styles.leaderboardView}>
+              <section className={styles.card}>
+                <div className={styles.leaderboardHeader}>
+                  <div>
+                    <h2 className={styles.cardTitle}>Leaderboard</h2>
+                    <p className={styles.leaderboardHint}>
+                      Track the sharpest guessers across this bar or drill into a single session.
+                    </p>
+                  </div>
+                  <div className={styles.leaderboardControls}>
+                    <label className={styles.leaderboardLabel}>
+                      View
+                      <select
+                        className={styles.leaderboardSelect}
+                        value={selectedLeaderboardSessionId}
+                        onChange={handleLeaderboardSessionChange}
+                      >
+                        <option value={OVERALL_LEADERBOARD}>Overall (all sessions)</option>
+                        {sortedLeaderboardSessions.map((session) => {
+                          const startedAt = new Date(session.startedAt).toLocaleString();
+                          const status = session.endedAt ? "ended" : "active";
+                          return (
+                            <option key={session.sessionId} value={session.sessionId}>
+                              {`Session • ${startedAt} (${status})`}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      onClick={handleRefreshLeaderboard}
+                      disabled={leaderboardLoading}
+                    >
+                      {leaderboardLoading ? "Refreshing…" : "Refresh"}
+                    </button>
+                  </div>
+                </div>
+                {leaderboardError ? (
+                  <div className={styles.inlineError}>{leaderboardError}</div>
+                ) : null}
+                {activeView === "leaderboard" && leaderboardLoading && !leaderboard ? (
+                  <div className={styles.leaderboardStatus}>Loading standings…</div>
+                ) : null}
+                {myTrendMessage && selectedLeaderboardSessionId === OVERALL_LEADERBOARD ? (
+                  <p className={styles.leaderboardTrend}>{myTrendMessage}</p>
+                ) : null}
+                <div className={styles.leaderboardTableWrapper}>
+                  <table className={styles.leaderboardTable}>
+                    <thead>
+                      <tr>
+                        <th scope="col">Rank</th>
+                        <th scope="col">Hipster</th>
+                        <th scope="col" className={styles.leaderboardTrendColumn}>
+                          Trend
+                        </th>
+                        <th scope="col" className={styles.leaderboardScoreColumn}>
+                          Correct guesses
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayedLeaderboardEntries.map((entry) => {
+                        const isMe = identity?.hipsterId === entry.hipsterId;
+                        const rowClassName = isMe
+                          ? `${styles.leaderboardRow} ${styles.leaderboardMeRow}`
+                          : styles.leaderboardRow;
+
+                        return (
+                          <tr key={entry.hipsterId} className={rowClassName}>
+                            <td className={styles.leaderboardRankCell}>{entry.rank}</td>
+                            <td className={styles.leaderboardNameCell}>{entry.username}</td>
+                            <td className={styles.leaderboardTrendCell}>{renderTrendIndicator(entry)}</td>
+                            <td className={styles.leaderboardScoreCell}>{entry.score}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {displayedLeaderboardEntries.length === 0 && !leaderboardLoading && !leaderboardError ? (
+                  <div className={styles.leaderboardStatus}>No standings yet. Reveal a cycle to see points.</div>
+                ) : null}
+                {selectedLeaderboardSummary && selectedLeaderboardSessionId !== OVERALL_LEADERBOARD ? (
+                  <p className={styles.leaderboardSessionMeta}>{selectedLeaderboardSummary}</p>
+                ) : null}
+              </section>
             </div>
           )}
         </>

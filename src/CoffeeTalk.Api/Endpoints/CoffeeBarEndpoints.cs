@@ -1,11 +1,13 @@
+using System.Collections.Generic;
+using System.Linq;
 using CoffeeTalk.Api.Contracts.CoffeeBars;
 using CoffeeTalk.Api.Hubs;
 using CoffeeTalk.Api.Services;
-using CoffeeTalk.Domain.CoffeeBars;
 using CoffeeTalk.Domain;
+using CoffeeTalk.Domain.BrewSessions;
+using CoffeeTalk.Domain.CoffeeBars;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using System.Linq;
 using Microsoft.AspNetCore.SignalR;
 
 namespace CoffeeTalk.Api.Endpoints;
@@ -31,6 +33,13 @@ public static class CoffeeBarEndpoints
             .WithName("GetCoffeeBar")
             .WithSummary("Gets a coffee bar by its code.")
             .Produces<CoffeeBarResource>()
+            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status404NotFound);
+
+        group.MapGet("/{code}/leaderboard", GetLeaderboardAsync)
+            .WithName("GetCoffeeBarLeaderboard")
+            .WithSummary("Gets leaderboard standings for a coffee bar.")
+            .Produces<CoffeeBarLeaderboardResource>()
             .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status404NotFound);
 
@@ -98,6 +107,246 @@ public static class CoffeeBarEndpoints
             .Produces(StatusCodes.Status404NotFound);
 
         return endpoints;
+    }
+
+    private static CoffeeBarLeaderboardResource BuildLeaderboard(CoffeeBar coffeeBar)
+    {
+        ArgumentNullException.ThrowIfNull(coffeeBar);
+
+        var hipsters = coffeeBar.Hipsters
+            .OrderBy(hipster => hipster.Username, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var overallScores = hipsters.ToDictionary(hipster => hipster.Id, _ => 0);
+        var sessions = coffeeBar.Sessions
+            .OrderBy(session => session.StartedAt)
+            .ToList();
+
+        var sessionResources = new List<SessionLeaderboardResource>(sessions.Count);
+
+        foreach (var session in sessions)
+        {
+            var sessionScores = hipsters.ToDictionary(hipster => hipster.Id, _ => 0);
+            var cycles = session.Cycles
+                .OrderBy(cycle => cycle.RevealedAt ?? cycle.StartedAt)
+                .ThenBy(cycle => cycle.StartedAt)
+                .ToList();
+
+            foreach (var cycle in cycles)
+            {
+                foreach (var vote in cycle.Votes)
+                {
+                    if (vote.IsCorrect == true)
+                    {
+                        IncrementScore(sessionScores, vote.VoterHipsterId);
+                        IncrementScore(overallScores, vote.VoterHipsterId);
+                    }
+                }
+            }
+
+            var sessionEntries = CreateLeaderboardEntries(sessionScores, hipsters);
+            sessionResources.Add(new SessionLeaderboardResource(
+                session.Id,
+                session.StartedAt,
+                session.EndedAt,
+                sessionEntries));
+        }
+
+        var previousRanks = CalculatePreviousRanks(hipsters, sessions);
+        var overallEntries = CreateLeaderboardEntries(overallScores, hipsters, previousRanks);
+
+        return new CoffeeBarLeaderboardResource(overallEntries, sessionResources);
+    }
+
+    private static IReadOnlyList<LeaderboardEntryResource> CreateLeaderboardEntries(
+        IReadOnlyDictionary<Guid, int> scores,
+        IReadOnlyList<Hipster> hipsters,
+        IReadOnlyDictionary<Guid, int?>? previousRanks = null)
+    {
+        ArgumentNullException.ThrowIfNull(scores);
+        ArgumentNullException.ThrowIfNull(hipsters);
+
+        var ordered = hipsters
+            .Select(hipster =>
+            {
+                scores.TryGetValue(hipster.Id, out var score);
+                return new
+                {
+                    hipster.Id,
+                    hipster.Username,
+                    Score = score
+                };
+            })
+            .OrderByDescending(item => item.Score)
+            .ThenBy(item => item.Username, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var entries = new List<LeaderboardEntryResource>(ordered.Count);
+        var currentRank = 0;
+        int? lastScore = null;
+
+        foreach (var item in ordered)
+        {
+            if (lastScore is null || item.Score != lastScore)
+            {
+                currentRank++;
+                lastScore = item.Score;
+            }
+
+            int? previousRank = null;
+            if (previousRanks is not null && previousRanks.TryGetValue(item.Id, out var priorRank))
+            {
+                previousRank = priorRank;
+            }
+
+            var trend = CalculateTrend(currentRank, previousRank);
+            entries.Add(new LeaderboardEntryResource(item.Id, item.Username, item.Score, currentRank, previousRank, trend));
+        }
+
+        return entries;
+    }
+
+    private static IReadOnlyDictionary<Guid, int?> CalculatePreviousRanks(
+        IReadOnlyList<Hipster> hipsters,
+        IEnumerable<BrewSession> sessions)
+    {
+        ArgumentNullException.ThrowIfNull(hipsters);
+        ArgumentNullException.ThrowIfNull(sessions);
+
+        var cumulativeScores = hipsters.ToDictionary(hipster => hipster.Id, _ => 0);
+        Dictionary<Guid, int>? lastRanks = null;
+        Dictionary<Guid, int>? previousRanks = null;
+
+        var revealedCycles = sessions
+            .SelectMany(session => session.Cycles)
+            .Where(cycle => cycle.RevealedAt is not null)
+            .OrderBy(cycle => cycle.RevealedAt ?? cycle.StartedAt)
+            .ThenBy(cycle => cycle.StartedAt)
+            .ToList();
+
+        foreach (var cycle in revealedCycles)
+        {
+            foreach (var vote in cycle.Votes)
+            {
+                if (vote.IsCorrect == true)
+                {
+                    IncrementScore(cumulativeScores, vote.VoterHipsterId);
+                }
+            }
+
+            previousRanks = lastRanks;
+            lastRanks = CalculateRankDictionary(cumulativeScores, hipsters);
+        }
+
+        if (previousRanks is null)
+        {
+            return hipsters.ToDictionary(hipster => hipster.Id, _ => (int?)null);
+        }
+
+        var result = new Dictionary<Guid, int?>(hipsters.Count);
+        foreach (var hipster in hipsters)
+        {
+            previousRanks.TryGetValue(hipster.Id, out var rank);
+            result[hipster.Id] = rank;
+        }
+
+        return result;
+    }
+
+    private static Dictionary<Guid, int> CalculateRankDictionary(
+        IReadOnlyDictionary<Guid, int> scores,
+        IReadOnlyList<Hipster> hipsters)
+    {
+        var ordered = hipsters
+            .Select(hipster =>
+            {
+                scores.TryGetValue(hipster.Id, out var score);
+                return new
+                {
+                    hipster.Id,
+                    hipster.Username,
+                    Score = score
+                };
+            })
+            .OrderByDescending(item => item.Score)
+            .ThenBy(item => item.Username, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var ranks = new Dictionary<Guid, int>(ordered.Count);
+        var currentRank = 0;
+        int? lastScore = null;
+
+        foreach (var item in ordered)
+        {
+            if (lastScore is null || item.Score != lastScore)
+            {
+                currentRank++;
+                lastScore = item.Score;
+            }
+
+            ranks[item.Id] = currentRank;
+        }
+
+        return ranks;
+    }
+
+    private static LeaderboardTrend CalculateTrend(int currentRank, int? previousRank)
+    {
+        if (previousRank is null)
+        {
+            return LeaderboardTrend.Stable;
+        }
+
+        if (currentRank < previousRank.Value)
+        {
+            return LeaderboardTrend.Up;
+        }
+
+        if (currentRank > previousRank.Value)
+        {
+            return LeaderboardTrend.Down;
+        }
+
+        return LeaderboardTrend.Stable;
+    }
+
+    private static void IncrementScore(IDictionary<Guid, int> scores, Guid hipsterId)
+    {
+        if (hipsterId == Guid.Empty)
+        {
+            return;
+        }
+
+        if (scores.TryGetValue(hipsterId, out var current))
+        {
+            scores[hipsterId] = current + 1;
+        }
+        else
+        {
+            scores[hipsterId] = 1;
+        }
+    }
+
+    private static async Task<Results<Ok<CoffeeBarLeaderboardResource>, BadRequest<ProblemDetails>, NotFound>> GetLeaderboardAsync(
+        string code,
+        ICoffeeBarRepository repository,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var coffeeBar = await repository.GetByCodeAsync(code, cancellationToken).ConfigureAwait(false);
+            if (coffeeBar is null)
+            {
+                return TypedResults.NotFound();
+            }
+
+            var leaderboard = BuildLeaderboard(coffeeBar);
+            return TypedResults.Ok(leaderboard);
+        }
+        catch (DomainException ex)
+        {
+            return TypedResults.BadRequest(CreateProblemDetails(ex.Message));
+        }
     }
 
     private static async Task<Results<Created<CreateCoffeeBarResponse>, BadRequest<ProblemDetails>>> CreateCoffeeBarAsync(
