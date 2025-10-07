@@ -6,4 +6,6 @@ public sealed record IngredientResource(
     Guid Id,
     string VideoId,
     bool IsConsumed,
-    IReadOnlyList<Guid> SubmitterIds);
+    IReadOnlyList<Guid> SubmitterIds,
+    string? Title,
+    string? ThumbnailUrl);

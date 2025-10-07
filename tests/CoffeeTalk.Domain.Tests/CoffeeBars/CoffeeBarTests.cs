@@ -60,6 +60,48 @@ public class CoffeeBarTests
     }
 
     [Fact]
+    public void SubmitIngredient_StoresMetadata_WhenProvided()
+    {
+        var bar = CreateBar();
+        var alice = bar.AddHipster(Guid.NewGuid(), "Alice");
+
+        var submission = bar.SubmitIngredient(
+            Guid.NewGuid(),
+            alice.Id,
+            "yt-meta",
+            DateTimeOffset.UtcNow,
+            "Dreamy Track",
+            "https://example.com/thumb.jpg");
+
+        var ingredient = bar.Ingredients.Single(i => i.Id == submission.IngredientId);
+        ingredient.Title.ShouldBe("Dreamy Track");
+        ingredient.ThumbnailUrl.ShouldBe("https://example.com/thumb.jpg");
+    }
+
+    [Fact]
+    public void SubmitIngredient_UpdatesMetadata_ForExistingIngredient()
+    {
+        var bar = CreateBar();
+        var alice = bar.AddHipster(Guid.NewGuid(), "Alice");
+        var bob = bar.AddHipster(Guid.NewGuid(), "Bob");
+
+        var firstSubmission = bar.SubmitIngredient(Guid.NewGuid(), alice.Id, "yt-meta", DateTimeOffset.UtcNow);
+        var ingredient = bar.Ingredients.Single(i => i.Id == firstSubmission.IngredientId);
+        ingredient.Title.ShouldBeNull();
+
+        bar.SubmitIngredient(
+            Guid.NewGuid(),
+            bob.Id,
+            "yt-meta",
+            DateTimeOffset.UtcNow.AddMinutes(1),
+            "Updated Title",
+            "https://example.com/thumb-updated.jpg");
+
+        ingredient.Title.ShouldBe("Updated Title");
+        ingredient.ThumbnailUrl.ShouldBe("https://example.com/thumb-updated.jpg");
+    }
+
+    [Fact]
     public void StartSession_LocksSubmissions_WhenPolicyIsLockOnFirstBrew()
     {
         var bar = CreateBar(SubmissionPolicy.LockOnFirstBrew);

@@ -1,3 +1,4 @@
+using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using CoffeeTalk.Api.Endpoints;
@@ -49,6 +50,15 @@ builder.Services.AddScoped<ICoffeeBarCodeGenerator, CoffeeBarCodeGenerator>();
 builder.Services.AddSingleton<INextIngredientSelector, RandomNextIngredientSelector>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IBrewSessionSummaryProvider, InMemoryBrewSessionSummaryProvider>();
+builder.Services.Configure<YouTubeOptions>(builder.Configuration.GetSection("YouTube"));
+builder.Services.PostConfigure<YouTubeOptions>(options =>
+{
+    options.ApiKey ??= builder.Configuration["YouTubeApiKey"];
+});
+builder.Services.AddHttpClient<IYouTubeMetadataProvider, YouTubeMetadataProvider>(client =>
+{
+    client.BaseAddress = new Uri("https://www.googleapis.com/youtube/v3/");
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSignalR();

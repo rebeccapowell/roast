@@ -59,7 +59,9 @@ public static class CoffeeBarContractsMapper
             ingredient.Id,
             ingredient.VideoId,
             ingredient.IsConsumed,
-            ingredient.SubmitterIds.ToList());
+            ingredient.SubmitterIds.ToList(),
+            ingredient.Title,
+            ingredient.ThumbnailUrl);
     }
 
     public static SubmissionResource ToResource(Submission submission)
@@ -103,6 +105,8 @@ public static class CoffeeBarContractsMapper
             cycle.SessionId,
             cycle.IngredientId,
             ingredient.VideoId,
+            ingredient.Title,
+            ingredient.ThumbnailUrl,
             cycle.StartedAt,
             cycle.RevealedAt,
             cycle.IsActive,
