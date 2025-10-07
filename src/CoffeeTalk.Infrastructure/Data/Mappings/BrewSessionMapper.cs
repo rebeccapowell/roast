@@ -15,7 +15,8 @@ internal static class BrewSessionMapper
         {
             Id = session.Id,
             CoffeeBarId = session.CoffeeBarId,
-            StartedAt = session.StartedAt
+            StartedAt = session.StartedAt,
+            EndedAt = session.EndedAt
         };
 
         entity.Cycles = session.Cycles
@@ -29,6 +30,6 @@ internal static class BrewSessionMapper
     {
         ArgumentNullException.ThrowIfNull(entity);
 
-        return BrewSession.FromState(entity.Id, entity.CoffeeBarId, entity.StartedAt, cycles);
+        return BrewSession.FromState(entity.Id, entity.CoffeeBarId, entity.StartedAt, entity.EndedAt, cycles);
     }
 }

@@ -25,6 +25,11 @@ public static class CoffeeBarContractsMapper
             .Select(ToResource)
             .ToList();
 
+        var activeSessionId = coffeeBar.Sessions
+            .OrderByDescending(session => session.StartedAt)
+            .FirstOrDefault(session => session.IsActive)
+            ?.Id;
+
         return new CoffeeBarResource(
             coffeeBar.Id,
             coffeeBar.Code.Value,
@@ -33,6 +38,7 @@ public static class CoffeeBarContractsMapper
             coffeeBar.SubmissionPolicy,
             coffeeBar.SubmissionsLocked,
             coffeeBar.IsClosed,
+            activeSessionId,
             hipsters,
             ingredients,
             submissions);
@@ -72,10 +78,14 @@ public static class CoffeeBarContractsMapper
 
         var cycles = session.Cycles
             .OrderBy(cycle => cycle.StartedAt)
-            .Select(cycle => ToResource(cycle, ingredientLookup[cycle.IngredientId]))
+            .Select(cycle => ingredientLookup.TryGetValue(cycle.IngredientId, out var ingredient)
+                ? ToResource(cycle, ingredient)
+                : null)
+            .Where(resource => resource is not null)
+            .Select(resource => resource!)
             .ToList();
 
-        return new BrewSessionResource(session.Id, session.StartedAt, cycles);
+        return new BrewSessionResource(session.Id, session.StartedAt, session.EndedAt, cycles);
     }
 
     public static BrewCycleResource ToResource(BrewCycle cycle, Ingredient ingredient)

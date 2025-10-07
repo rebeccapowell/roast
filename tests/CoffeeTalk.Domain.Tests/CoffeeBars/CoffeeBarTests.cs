@@ -89,6 +89,70 @@ public class CoffeeBarTests
     }
 
     [Fact]
+    public void StartSession_Throws_WhenAnotherSessionIsActive()
+    {
+        var bar = CreateBar();
+        var hipster = bar.AddHipster(Guid.NewGuid(), "PressPaul");
+        bar.SubmitIngredient(Guid.NewGuid(), hipster.Id, "yt-777", DateTimeOffset.UtcNow);
+
+        bar.StartSession(Guid.NewGuid(), DateTimeOffset.UtcNow);
+        var act = () => bar.StartSession(Guid.NewGuid(), DateTimeOffset.UtcNow.AddMinutes(1));
+
+        var exception = Should.Throw<DomainException>(act);
+        exception.Message.ShouldContain("already active", Case.Insensitive);
+    }
+
+    [Fact]
+    public void EndSession_Throws_WhenCycleStillActive()
+    {
+        var bar = CreateBar();
+        var alice = bar.AddHipster(Guid.NewGuid(), "Alice");
+        bar.SubmitIngredient(Guid.NewGuid(), alice.Id, "yt-abc", DateTimeOffset.UtcNow);
+        var session = bar.StartSession(Guid.NewGuid(), DateTimeOffset.UtcNow);
+        bar.StartNextCycle(session.Id, Guid.NewGuid(), DateTimeOffset.UtcNow, new StubIngredientSelector());
+
+        var act = () => bar.EndSession(session.Id, DateTimeOffset.UtcNow.AddMinutes(5));
+
+        var exception = Should.Throw<DomainException>(act);
+        exception.Message.ShouldContain("Reveal", Case.Insensitive);
+    }
+
+    [Fact]
+    public void EndSession_UnlocksSubmissions_WhenPolicyLocksOnBrew()
+    {
+        var bar = CreateBar(SubmissionPolicy.LockOnFirstBrew);
+        var alice = bar.AddHipster(Guid.NewGuid(), "Alice");
+        var bob = bar.AddHipster(Guid.NewGuid(), "Bob");
+        bar.SubmitIngredient(Guid.NewGuid(), alice.Id, "yt-abc", DateTimeOffset.UtcNow);
+        bar.SubmitIngredient(Guid.NewGuid(), bob.Id, "yt-def", DateTimeOffset.UtcNow);
+        var session = bar.StartSession(Guid.NewGuid(), DateTimeOffset.UtcNow);
+        var cycle = bar.StartNextCycle(session.Id, Guid.NewGuid(), DateTimeOffset.UtcNow, new StubIngredientSelector());
+        bar.Reveal(cycle.Id, DateTimeOffset.UtcNow.AddMinutes(2));
+
+        bar.EndSession(session.Id, DateTimeOffset.UtcNow.AddMinutes(3));
+
+        bar.SubmissionsLocked.ShouldBeFalse();
+        var newSubmission = bar.SubmitIngredient(Guid.NewGuid(), alice.Id, "yt-ghi", DateTimeOffset.UtcNow.AddMinutes(4));
+        newSubmission.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void EndSession_AllowsStartingNewSession()
+    {
+        var bar = CreateBar(SubmissionPolicy.AlwaysOpen);
+        var alice = bar.AddHipster(Guid.NewGuid(), "Alice");
+        bar.SubmitIngredient(Guid.NewGuid(), alice.Id, "yt-abc", DateTimeOffset.UtcNow);
+        bar.SubmitIngredient(Guid.NewGuid(), alice.Id, "yt-def", DateTimeOffset.UtcNow.AddMinutes(1));
+
+        var firstSession = bar.StartSession(Guid.NewGuid(), DateTimeOffset.UtcNow);
+        var firstCycle = bar.StartNextCycle(firstSession.Id, Guid.NewGuid(), DateTimeOffset.UtcNow, new StubIngredientSelector());
+        bar.Reveal(firstCycle.Id, DateTimeOffset.UtcNow.AddMinutes(2));
+        bar.EndSession(firstSession.Id, DateTimeOffset.UtcNow.AddMinutes(3));
+
+        Should.NotThrow(() => bar.StartSession(Guid.NewGuid(), DateTimeOffset.UtcNow.AddMinutes(4)));
+    }
+
+    [Fact]
     public void CastVote_Throws_WhenHipsterVotesForSelf()
     {
         var bar = CreateBar();

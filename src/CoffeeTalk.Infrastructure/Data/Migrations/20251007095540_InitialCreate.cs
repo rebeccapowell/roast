@@ -33,7 +33,8 @@ namespace CoffeeTalk.Infrastructure.Data.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     CoffeeBarId = table.Column<Guid>(type: "uuid", nullable: false),
-                    StartedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                    StartedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    EndedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {

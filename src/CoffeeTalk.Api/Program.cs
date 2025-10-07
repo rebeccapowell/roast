@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using CoffeeTalk.Api.Endpoints;
+using CoffeeTalk.Api.Hubs;
 using CoffeeTalk.Api.Services;
 using CoffeeTalk.Domain.CoffeeBars;
 using CoffeeTalk.Infrastructure.Data;
@@ -23,7 +24,8 @@ builder.Services.AddCors(options =>
                 "http://localhost:3000",
                 "https://localhost:3000")
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
@@ -49,6 +51,7 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IBrewSessionSummaryProvider, InMemoryBrewSessionSummaryProvider>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
@@ -63,5 +66,6 @@ app.UseCors(FrontendCorsPolicyName);
 app.MapDefaultEndpoints();
 app.MapCoffeeBarEndpoints();
 app.MapBrewSessionEndpoints();
+app.MapHub<CoffeeBarHub>("/hubs/coffee-bar");
 
 app.Run();

@@ -158,6 +158,11 @@ public sealed class CoffeeBar
             throw new DomainException("Coffee bar is closed because all ingredients have been consumed.");
         }
 
+        if (_sessions.Any(session => session.IsActive))
+        {
+            throw new DomainException("A session is already active for this coffee bar.");
+        }
+
         if (_sessions.Any(session => session.Id == sessionId))
         {
             throw new DomainException("A session with the same identifier already exists.");
@@ -205,6 +210,24 @@ public sealed class CoffeeBar
 
         var cycle = session.StartCycle(cycleId, selected.Id, startedAt);
         return cycle;
+    }
+
+    public BrewSession EndSession(Guid sessionId, DateTimeOffset endedAt)
+    {
+        if (sessionId == Guid.Empty)
+        {
+            throw new DomainException("Session identifier cannot be empty.");
+        }
+
+        var session = GetSession(sessionId);
+        session.End(endedAt);
+
+        if (SubmissionPolicy == SubmissionPolicy.LockOnFirstBrew)
+        {
+            _submissionsLocked = false;
+        }
+
+        return session;
     }
 
     public void RemoveSubmission(Guid hipsterId, Guid submissionId)

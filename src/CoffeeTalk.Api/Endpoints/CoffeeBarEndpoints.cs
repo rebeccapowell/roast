@@ -1,10 +1,12 @@
 using CoffeeTalk.Api.Contracts.CoffeeBars;
+using CoffeeTalk.Api.Hubs;
 using CoffeeTalk.Api.Services;
 using CoffeeTalk.Domain.CoffeeBars;
 using CoffeeTalk.Domain;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Linq;
+using Microsoft.AspNetCore.SignalR;
 
 namespace CoffeeTalk.Api.Endpoints;
 
@@ -63,6 +65,13 @@ public static class CoffeeBarEndpoints
         group.MapGet("/{code}/sessions/{sessionId:guid}", GetSessionAsync)
             .WithName("GetSession")
             .WithSummary("Gets the state of a brew session.")
+            .Produces<SessionStateResource>()
+            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status404NotFound);
+
+        group.MapPost("/{code}/sessions/{sessionId:guid}/end", EndSessionAsync)
+            .WithName("EndSession")
+            .WithSummary("Ends the active brew session for a coffee bar.")
             .Produces<SessionStateResource>()
             .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status404NotFound);
@@ -155,6 +164,7 @@ public static class CoffeeBarEndpoints
         string code,
         JoinCoffeeBarRequest request,
         ICoffeeBarRepository repository,
+        IHubContext<CoffeeBarHub, ICoffeeBarClient> hubContext,
         CancellationToken cancellationToken)
     {
         try
@@ -168,9 +178,16 @@ public static class CoffeeBarEndpoints
             var hipster = coffeeBar.AddHipster(Guid.NewGuid(), request.Username);
             await repository.UpdateAsync(coffeeBar, cancellationToken).ConfigureAwait(false);
 
+            var coffeeBarResource = CoffeeBarContractsMapper.ToResource(coffeeBar);
             var response = new JoinCoffeeBarResponse(
-                CoffeeBarContractsMapper.ToResource(coffeeBar),
+                coffeeBarResource,
                 CoffeeBarContractsMapper.ToResource(hipster));
+
+            await hubContext
+                .Clients
+                .Group(CoffeeBarHub.GetGroupName(coffeeBarResource.Code))
+                .CoffeeBarUpdated(coffeeBarResource)
+                .ConfigureAwait(false);
 
             return TypedResults.Ok(response);
         }
@@ -185,6 +202,7 @@ public static class CoffeeBarEndpoints
         Guid submissionId,
         [FromQuery] Guid hipsterId,
         ICoffeeBarRepository repository,
+        IHubContext<CoffeeBarHub, ICoffeeBarClient> hubContext,
         CancellationToken cancellationToken)
     {
         try
@@ -203,7 +221,15 @@ public static class CoffeeBarEndpoints
             coffeeBar.RemoveSubmission(hipsterId, submissionId);
             await repository.UpdateAsync(coffeeBar, cancellationToken).ConfigureAwait(false);
 
-            return TypedResults.Ok(CoffeeBarContractsMapper.ToResource(coffeeBar));
+            var coffeeBarResource = CoffeeBarContractsMapper.ToResource(coffeeBar);
+
+            await hubContext
+                .Clients
+                .Group(CoffeeBarHub.GetGroupName(coffeeBarResource.Code))
+                .CoffeeBarUpdated(coffeeBarResource)
+                .ConfigureAwait(false);
+
+            return TypedResults.Ok(coffeeBarResource);
         }
         catch (DomainException ex)
         {
@@ -216,6 +242,7 @@ public static class CoffeeBarEndpoints
         ICoffeeBarRepository repository,
         INextIngredientSelector ingredientSelector,
         TimeProvider timeProvider,
+        IHubContext<CoffeeBarHub, ICoffeeBarClient> hubContext,
         CancellationToken cancellationToken)
     {
         try
@@ -232,6 +259,20 @@ public static class CoffeeBarEndpoints
             await repository.UpdateAsync(coffeeBar, cancellationToken).ConfigureAwait(false);
 
             var response = CoffeeBarContractsMapper.ToSessionStateResource(coffeeBar, session);
+            var group = CoffeeBarHub.GetGroupName(response.CoffeeBar.Code);
+
+            await hubContext
+                .Clients
+                .Group(group)
+                .CoffeeBarUpdated(response.CoffeeBar)
+                .ConfigureAwait(false);
+
+            await hubContext
+                .Clients
+                .Group(group)
+                .SessionUpdated(response)
+                .ConfigureAwait(false);
+
             return TypedResults.Created($"/coffee-bars/{code}/sessions/{session.Id}", response);
         }
         catch (DomainException ex)
@@ -269,6 +310,48 @@ public static class CoffeeBarEndpoints
         }
     }
 
+    private static async Task<Results<Ok<SessionStateResource>, BadRequest<ProblemDetails>, NotFound>> EndSessionAsync(
+        string code,
+        Guid sessionId,
+        ICoffeeBarRepository repository,
+        TimeProvider timeProvider,
+        IHubContext<CoffeeBarHub, ICoffeeBarClient> hubContext,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var coffeeBar = await repository.GetByCodeAsync(code, cancellationToken).ConfigureAwait(false);
+            if (coffeeBar is null)
+            {
+                return TypedResults.NotFound();
+            }
+
+            var session = coffeeBar.EndSession(sessionId, timeProvider.GetUtcNow());
+            await repository.UpdateAsync(coffeeBar, cancellationToken).ConfigureAwait(false);
+
+            var response = CoffeeBarContractsMapper.ToSessionStateResource(coffeeBar, session);
+
+            var group = CoffeeBarHub.GetGroupName(response.CoffeeBar.Code);
+            await hubContext
+                .Clients
+                .Group(group)
+                .CoffeeBarUpdated(response.CoffeeBar)
+                .ConfigureAwait(false);
+
+            await hubContext
+                .Clients
+                .Group(group)
+                .SessionUpdated(response)
+                .ConfigureAwait(false);
+
+            return TypedResults.Ok(response);
+        }
+        catch (DomainException ex)
+        {
+            return TypedResults.BadRequest(CreateProblemDetails(ex.Message));
+        }
+    }
+
     private static async Task<Results<Ok<SessionStateResource>, BadRequest<ProblemDetails>, NotFound>> CastVoteAsync(
         string code,
         Guid sessionId,
@@ -276,6 +359,7 @@ public static class CoffeeBarEndpoints
         CastVoteRequest request,
         ICoffeeBarRepository repository,
         TimeProvider timeProvider,
+        IHubContext<CoffeeBarHub, ICoffeeBarClient> hubContext,
         CancellationToken cancellationToken)
     {
         try
@@ -296,6 +380,13 @@ public static class CoffeeBarEndpoints
             }
 
             var response = CoffeeBarContractsMapper.ToSessionStateResource(coffeeBar, session);
+
+            await hubContext
+                .Clients
+                .Group(CoffeeBarHub.GetGroupName(response.CoffeeBar.Code))
+                .SessionUpdated(response)
+                .ConfigureAwait(false);
+
             return TypedResults.Ok(response);
         }
         catch (DomainException ex)
@@ -311,6 +402,7 @@ public static class CoffeeBarEndpoints
         ICoffeeBarRepository repository,
         INextIngredientSelector ingredientSelector,
         TimeProvider timeProvider,
+        IHubContext<CoffeeBarHub, ICoffeeBarClient> hubContext,
         CancellationToken cancellationToken)
     {
         try
@@ -341,6 +433,13 @@ public static class CoffeeBarEndpoints
             }
 
             var response = CoffeeBarContractsMapper.ToSessionStateResource(coffeeBar, session);
+
+            await hubContext
+                .Clients
+                .Group(CoffeeBarHub.GetGroupName(response.CoffeeBar.Code))
+                .SessionUpdated(response)
+                .ConfigureAwait(false);
+
             return TypedResults.Ok(response);
         }
         catch (DomainException ex)
@@ -356,6 +455,7 @@ public static class CoffeeBarEndpoints
         RevealCycleRequest request,
         ICoffeeBarRepository repository,
         TimeProvider timeProvider,
+        IHubContext<CoffeeBarHub, ICoffeeBarClient> hubContext,
         CancellationToken cancellationToken)
     {
         try
@@ -389,6 +489,12 @@ public static class CoffeeBarEndpoints
                 CoffeeBarContractsMapper.ToSessionStateResource(coffeeBar, session),
                 CoffeeBarContractsMapper.ToResource(result));
 
+            await hubContext
+                .Clients
+                .Group(CoffeeBarHub.GetGroupName(response.Session.CoffeeBar.Code))
+                .CycleRevealed(response)
+                .ConfigureAwait(false);
+
             return TypedResults.Ok(response);
         }
         catch (DomainException ex)
@@ -402,6 +508,7 @@ public static class CoffeeBarEndpoints
         SubmitIngredientRequest request,
         ICoffeeBarRepository repository,
         TimeProvider timeProvider,
+        IHubContext<CoffeeBarHub, ICoffeeBarClient> hubContext,
         CancellationToken cancellationToken)
     {
         try
@@ -421,10 +528,17 @@ public static class CoffeeBarEndpoints
             await repository.UpdateAsync(coffeeBar, cancellationToken).ConfigureAwait(false);
 
             var ingredient = coffeeBar.Ingredients.First(i => i.Id == submission.IngredientId);
+            var coffeeBarResource = CoffeeBarContractsMapper.ToResource(coffeeBar);
             var response = new SubmitIngredientResponse(
-                CoffeeBarContractsMapper.ToResource(coffeeBar),
+                coffeeBarResource,
                 CoffeeBarContractsMapper.ToResource(ingredient),
                 submission.Id);
+
+            await hubContext
+                .Clients
+                .Group(CoffeeBarHub.GetGroupName(coffeeBarResource.Code))
+                .CoffeeBarUpdated(coffeeBarResource)
+                .ConfigureAwait(false);
 
             return TypedResults.Ok(response);
         }

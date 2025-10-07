@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import type { HubConnection } from "@microsoft/signalr";
+import { FormEvent, memo, useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./CoffeeBarClient.module.css";
 import { getIdentity, removeIdentity, saveIdentity, type HipsterIdentity } from "../../lib/identity";
 
@@ -36,6 +37,7 @@ type CoffeeBarResource = {
   submissionPolicy: SubmissionPolicy;
   submissionsLocked: boolean;
   isClosed: boolean;
+  activeSessionId: string | null;
   hipsters: HipsterResource[];
   ingredients: IngredientResource[];
   submissions: SubmissionResource[];
@@ -75,6 +77,7 @@ type BrewCycleResource = {
 type BrewSessionResource = {
   id: string;
   startedAt: string;
+  endedAt: string | null;
   cycles: BrewCycleResource[];
 };
 
@@ -99,6 +102,29 @@ type CoffeeBarClientProps = {
   code: string;
 };
 
+type YouTubeEmbedProps = {
+  videoId: string;
+  title: string;
+  className?: string;
+};
+
+const YouTubeEmbed = memo(function YouTubeEmbed({ videoId, title, className }: YouTubeEmbedProps) {
+  const src = useMemo(
+    () => `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`,
+    [videoId],
+  );
+
+  return (
+    <iframe
+      className={className}
+      src={src}
+      title={title}
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      allowFullScreen
+    />
+  );
+});
+
 export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
   const normalizedCode = code.toUpperCase();
 
@@ -113,12 +139,16 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
   const [urlInput, setUrlInput] = useState("");
   const [submissionLoading, setSubmissionLoading] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(false);
+  const [endSessionLoading, setEndSessionLoading] = useState(false);
   const [voteError, setVoteError] = useState<string | null>(null);
   const [revealLoading, setRevealLoading] = useState(false);
   const [nextCycleLoading, setNextCycleLoading] = useState(false);
   const [activeView, setActiveView] = useState<"bar" | "cycle">("bar");
   const [revealResult, setRevealResult] = useState<RevealResultResource | null>(null);
   const [lastCycleId, setLastCycleId] = useState<string | null>(null);
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
+  const [playerCycle, setPlayerCycle] = useState<BrewCycleResource | null>(null);
+  const [isClient, setIsClient] = useState(false);
 
   const loadIdentity = useCallback(() => {
     const stored = getIdentity(normalizedCode);
@@ -127,31 +157,46 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
     }
   }, [normalizedCode]);
 
+  const requestCoffeeBar = useCallback(async () => {
+    const response = await fetch(`${API_BASE_URL}/coffee-bars/${normalizedCode}`);
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error("We couldn't find this coffee bar. Check the code and try again.");
+      }
+
+      const payload = await response.json().catch(() => null);
+      throw new Error((payload && (payload.detail ?? payload.title)) || "Unable to load this coffee bar.");
+    }
+
+    return (await response.json()) as CoffeeBarResource;
+  }, [normalizedCode]);
+
   const fetchCoffeeBar = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/coffee-bars/${normalizedCode}`);
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error("We couldn't find this coffee bar. Check the code and try again.");
-        }
-
-        const payload = await response.json().catch(() => null);
-        throw new Error((payload && (payload.detail ?? payload.title)) || "Unable to load this coffee bar.");
-      }
-
-      const data = (await response.json()) as CoffeeBarResource;
+      const data = await requestCoffeeBar();
       setCoffeeBar(data);
-      setLoading(false);
       return data;
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Unable to load this coffee bar.");
+      return null;
+    } finally {
       setLoading(false);
+    }
+  }, [requestCoffeeBar]);
+
+  const refreshCoffeeBar = useCallback(async () => {
+    try {
+      const data = await requestCoffeeBar();
+      setCoffeeBar(data);
+      return data;
+    } catch (err) {
+      console.error(err);
       return null;
     }
-  }, [normalizedCode]);
+  }, [requestCoffeeBar]);
 
   useEffect(() => {
     loadIdentity();
@@ -160,6 +205,144 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
   useEffect(() => {
     fetchCoffeeBar();
   }, [fetchCoffeeBar]);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!API_BASE_URL) {
+      return;
+    }
+
+    let isActive = true;
+    let connection: HubConnection | null = null;
+
+    const handleCoffeeBarUpdated = (resource: CoffeeBarResource) => {
+      if (!isActive) {
+        return;
+      }
+
+      setCoffeeBar(resource);
+      setSessionState((current) => (current ? { ...current, coffeeBar: resource } : current));
+    };
+
+    const handleSessionUpdated = (resource: SessionStateResource) => {
+      if (!isActive) {
+        return;
+      }
+
+      setCoffeeBar(resource.coffeeBar);
+      setSessionState(resource);
+    };
+
+    const handleCycleRevealed = (response: RevealCycleResponse) => {
+      if (!isActive) {
+        return;
+      }
+
+      setCoffeeBar(response.session.coffeeBar);
+      setSessionState(response.session);
+      setRevealResult(response.reveal);
+      setLastCycleId(response.session.session.cycles.at(-1)?.id ?? null);
+      setActiveView("cycle");
+    };
+
+    const handleReconnecting = () => {
+      if (!isActive) {
+        return;
+      }
+
+      setRealtimeConnected(false);
+    };
+
+    const handleClosed = () => {
+      if (!isActive) {
+        return;
+      }
+
+      setRealtimeConnected(false);
+    };
+
+    const handleReconnected = async () => {
+      if (!isActive) {
+        return;
+      }
+
+      setRealtimeConnected(true);
+      try {
+        await connection?.invoke("JoinCoffeeBar", normalizedCode);
+      } catch (err) {
+        console.error("Failed to rejoin coffee bar group", err);
+      }
+    };
+
+    const setupConnection = async () => {
+      try {
+        const signalR = await import("@microsoft/signalr");
+        if (!isActive) {
+          return;
+        }
+
+        connection = new signalR.HubConnectionBuilder()
+          .withUrl(`${API_BASE_URL}/hubs/coffee-bar`)
+          .withAutomaticReconnect()
+          .configureLogging(signalR.LogLevel.Warning)
+          .build();
+
+        connection.on("CoffeeBarUpdated", handleCoffeeBarUpdated);
+        connection.on("SessionUpdated", handleSessionUpdated);
+        connection.on("CycleRevealed", handleCycleRevealed);
+        connection.onreconnecting(handleReconnecting);
+        connection.onclose(handleClosed);
+        connection.onreconnected(handleReconnected);
+
+        try {
+          await connection.start();
+          if (!isActive) {
+            return;
+          }
+
+          setRealtimeConnected(true);
+          await connection.invoke("JoinCoffeeBar", normalizedCode);
+        } catch (err) {
+          if (!isActive) {
+            return;
+          }
+
+          console.error("Failed to establish realtime connection", err);
+          setRealtimeConnected(false);
+        }
+      } catch (err) {
+        if (!isActive) {
+          return;
+        }
+
+        console.error("Failed to load realtime client", err);
+        setRealtimeConnected(false);
+      }
+    };
+
+    void setupConnection();
+
+    return () => {
+      isActive = false;
+      setRealtimeConnected(false);
+
+      if (!connection) {
+        return;
+      }
+
+      connection.off("CoffeeBarUpdated", handleCoffeeBarUpdated);
+      connection.off("SessionUpdated", handleSessionUpdated);
+      connection.off("CycleRevealed", handleCycleRevealed);
+      connection.onreconnecting(() => {});
+      connection.onclose(() => {});
+      connection.onreconnected(() => {});
+      void connection.invoke("LeaveCoffeeBar", normalizedCode).catch(() => {});
+      void connection.stop().catch(() => {});
+    };
+  }, [normalizedCode]);
 
   useEffect(() => {
     if (!coffeeBar || !identity) {
@@ -202,17 +385,30 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
     return coffeeBar.ingredients.filter((ingredient) => !ingredient.isConsumed).length;
   }, [coffeeBar]);
 
+  const sessionEndedAt = sessionState?.session.endedAt ?? null;
+  const hasActiveSession = Boolean(sessionState && !sessionEndedAt);
+
   const sessionCycles = useMemo(() => sessionState?.session.cycles ?? [], [sessionState]);
 
   const activeCycle = useMemo(
-    () => sessionCycles.find((cycle) => cycle.isActive) ?? null,
-    [sessionCycles],
+    () => (hasActiveSession ? sessionCycles.find((cycle) => cycle.isActive) ?? null : null),
+    [hasActiveSession, sessionCycles],
   );
 
   const latestCycle = useMemo(
     () => (sessionCycles.length ? sessionCycles[sessionCycles.length - 1] : null),
     [sessionCycles],
   );
+
+  useEffect(() => {
+    if (latestCycle) {
+      setPlayerCycle((current) => (current && current.id === latestCycle.id ? current : latestCycle));
+    } else if (!sessionState) {
+      setPlayerCycle(null);
+    }
+  }, [latestCycle, sessionState]);
+
+  const cycleForPlayer = playerCycle ?? latestCycle;
 
   const hipsterNameById = useMemo(() => {
     if (!coffeeBar) {
@@ -246,11 +442,11 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
 
   const displayReveal = revealResult ?? derivedReveal;
 
-  const totalVotesNeeded = coffeeBar?.hipsters.length ?? 0;
+  const totalVotesNeeded = hasActiveSession ? coffeeBar?.hipsters.length ?? 0 : 0;
   const votesCast = activeCycle?.votes.length ?? 0;
   const hasIdentity = Boolean(identity);
   const alreadyVoted = Boolean(
-    identity && activeCycle?.votes.some((vote) => vote.voterHipsterId === identity.hipsterId),
+    identity && activeCycle && activeCycle.votes.some((vote) => vote.voterHipsterId === identity.hipsterId),
   );
 
   const shareLink = useMemo(() => {
@@ -370,7 +566,7 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
 
         if (response.status === 404) {
           setVoteError("We couldn't find that submission anymore.");
-          await fetchCoffeeBar();
+          await refreshCoffeeBar();
           return;
         }
 
@@ -388,7 +584,7 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
         setVoteError("Something went wrong while removing the URL.");
       }
     },
-    [identity, normalizedCode, fetchCoffeeBar],
+    [identity, normalizedCode, refreshCoffeeBar],
   );
 
   const refreshSession = useCallback(
@@ -410,16 +606,38 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
   );
 
   useEffect(() => {
-    if (!sessionState) {
+    if (!coffeeBar || !coffeeBar.activeSessionId) {
+      return;
+    }
+
+    if (sessionState && sessionState.session.id === coffeeBar.activeSessionId) {
+      return;
+    }
+
+    void refreshSession(coffeeBar.activeSessionId);
+  }, [coffeeBar, refreshSession, sessionState]);
+
+  useEffect(() => {
+    if (realtimeConnected) {
+      return;
+    }
+
+    if (!coffeeBar && (!sessionState || !hasActiveSession)) {
       return;
     }
 
     const interval = window.setInterval(() => {
-      refreshSession(sessionState.session.id);
+      if (coffeeBar) {
+        void refreshCoffeeBar();
+      }
+
+      if (sessionState && hasActiveSession) {
+        void refreshSession(sessionState.session.id);
+      }
     }, 5000);
 
     return () => window.clearInterval(interval);
-  }, [sessionState, refreshSession]);
+  }, [coffeeBar, hasActiveSession, realtimeConnected, refreshCoffeeBar, refreshSession, sessionState]);
 
   useEffect(() => {
     if (!sessionState) {
@@ -441,7 +659,7 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
   }, [sessionState, latestCycle, lastCycleId]);
 
   const handleStartSession = useCallback(async () => {
-    if (!coffeeBar) {
+    if (!coffeeBar || hasActiveSession) {
       return;
     }
 
@@ -462,6 +680,9 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
       const state = payload as SessionStateResource;
       setCoffeeBar(state.coffeeBar);
       setSessionState(state);
+      setRevealResult(null);
+      setLastCycleId(null);
+      setPlayerCycle(null);
       setActiveView("cycle");
     } catch (err) {
       console.error(err);
@@ -469,7 +690,40 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
     } finally {
       setSessionLoading(false);
     }
-  }, [coffeeBar, normalizedCode]);
+  }, [coffeeBar, hasActiveSession, normalizedCode]);
+
+  const handleEndSession = useCallback(async () => {
+    if (!sessionState || !hasActiveSession) {
+      return;
+    }
+
+    setEndSessionLoading(true);
+    setVoteError(null);
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/coffee-bars/${normalizedCode}/sessions/${sessionState.session.id}/end`,
+        { method: "POST" },
+      );
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        setVoteError((payload && (payload.detail ?? payload.title)) || "We couldn't stop the session.");
+        return;
+      }
+
+      const state = payload as SessionStateResource;
+      setCoffeeBar(state.coffeeBar);
+      setSessionState(state);
+      setRevealResult(null);
+      setActiveView("bar");
+    } catch (err) {
+      console.error(err);
+      setVoteError("Something went wrong while stopping the session.");
+    } finally {
+      setEndSessionLoading(false);
+    }
+  }, [hasActiveSession, normalizedCode, sessionState]);
 
   const handleCastVote = useCallback(
     async (targetHipsterId: string) => {
@@ -544,7 +798,7 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
   }, [identity, activeCycle, normalizedCode]);
 
   const handleStartNextCycle = useCallback(async () => {
-    if (!identity || !sessionState) {
+    if (!identity || !sessionState || !hasActiveSession) {
       return;
     }
 
@@ -580,7 +834,7 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
     } finally {
       setNextCycleLoading(false);
     }
-  }, [identity, sessionState, normalizedCode]);
+  }, [hasActiveSession, identity, sessionState, normalizedCode]);
 
   const mySubmissions = useMemo(() => {
     if (!identity || !coffeeBar) {
@@ -655,23 +909,49 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
                 <section className={styles.card}>
                   <h2 className={styles.cardTitle}>Session</h2>
                   <p className={styles.sessionStatus}>
-                    {sessionState
-                      ? `Session started ${new Date(sessionState.session.startedAt).toLocaleTimeString()}`
-                      : "No active session yet."}
+                    {hasActiveSession
+                      ? `Session started ${new Date(sessionState!.session.startedAt).toLocaleTimeString()}`
+                      : sessionState
+                        ? `Session ended ${
+                            sessionEndedAt
+                              ? new Date(sessionEndedAt).toLocaleTimeString()
+                              : "recently"
+                          }`
+                        : "No active session yet."}
                   </p>
-                  <button
-                    className={styles.primaryButton}
-                    type="button"
-                    onClick={handleStartSession}
-                    disabled={sessionLoading || availableIngredients === 0 || !hasIdentity}
-                  >
-                    {sessionLoading ? "Starting…" : sessionState ? "Restart session" : "Start session"}
-                  </button>
+                  {hasActiveSession ? (
+                    <button
+                      className={styles.secondaryButton}
+                      type="button"
+                      onClick={handleEndSession}
+                      disabled={endSessionLoading || !hasIdentity || Boolean(activeCycle)}
+                    >
+                      {endSessionLoading ? "Stopping…" : "Stop session"}
+                    </button>
+                  ) : (
+                    <button
+                      className={styles.primaryButton}
+                      type="button"
+                      onClick={handleStartSession}
+                      disabled={sessionLoading || availableIngredients === 0 || !hasIdentity}
+                    >
+                      {sessionLoading
+                        ? "Starting…"
+                        : sessionState
+                          ? "Start new session"
+                          : "Start session"}
+                    </button>
+                  )}
                   <p className={styles.sessionHint}>
                     {availableIngredients === 0
                       ? "Add more ingredients before brewing."
                       : `${availableIngredients} ingredient${availableIngredients === 1 ? "" : "s"} ready to brew.`}
                   </p>
+                  {hasActiveSession && activeCycle && (
+                    <p className={styles.sessionHint}>
+                      Reveal the current video before stopping the session.
+                    </p>
+                  )}
                   {!hasIdentity && <p className={styles.sessionHint}>Join the bar to control the brew.</p>}
                 </section>
 
@@ -785,18 +1065,23 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
                   {sessionState ? (
                     <>
                       <p className={styles.sessionHint}>
-                        {activeCycle
-                          ? "A video is brewing right now. Switch to the cycle view to manage voting."
+                        {hasActiveSession
+                          ? activeCycle
+                            ? "A video is brewing right now. Switch to the cycle view to manage voting."
+                            : latestCycle
+                              ? "Voting is closed for this video. Head to the cycle view to reveal results or start the next brew."
+                              : "Session is ready to begin brewing."
                           : latestCycle
-                            ? "Voting is closed for this video. Head to the cycle view to reveal results or start the next brew."
-                            : "Session is ready to begin brewing."}
+                            ? "Session has ended. Review the last brew or start a new session to keep going."
+                            : "Session has ended. Start a new session to brew again."}
                       </p>
                       <button
                         type="button"
                         className={`${styles.primaryButton} ${styles.cycleAction}`}
                         onClick={() => setActiveView("cycle")}
+                        disabled={!hasActiveSession && !latestCycle}
                       >
-                        Open cycle view
+                        {hasActiveSession ? "Open cycle view" : "Review cycle view"}
                       </button>
                     </>
                   ) : (
@@ -811,24 +1096,27 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
             <div className={styles.cycleView}>
               <section className={styles.card}>
                 <h2 className={styles.cardTitle}>Now playing</h2>
-                {sessionState && latestCycle ? (
+                {sessionState && cycleForPlayer ? (
                   <div className={styles.playerArea}>
                     <div className={styles.playerWrapper}>
-                      <iframe
-                        key={latestCycle.id}
-                        className={styles.player}
-                        src={`https://www.youtube.com/embed/${latestCycle.videoId}?autoplay=${activeCycle ? 1 : 0}`}
-                        title="Coffee Talk Video"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                      />
+                      {isClient ? (
+                        <YouTubeEmbed
+                          videoId={cycleForPlayer.videoId}
+                          title="Coffee Talk Video"
+                          className={styles.player}
+                        />
+                      ) : (
+                        <div className={styles.playerPlaceholder}>Loading the player…</div>
+                      )}
                     </div>
                     <aside className={styles.voteSidebar}>
                       <div className={styles.voteHeader}>Who’s the curator?</div>
                       <div className={styles.voteSummary}>
                         {activeCycle
                           ? `Votes: ${votesCast}/${totalVotesNeeded}`
-                          : "Voting is closed for this video."}
+                          : hasActiveSession
+                            ? "Voting is closed for this video."
+                            : "Session is not active."}
                       </div>
                       {hasIdentity ? (
                         activeCycle ? (
@@ -839,7 +1127,7 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
                                   type="button"
                                   className={styles.voteButton}
                                   disabled={
-                                    hipster.id === identity.hipsterId || alreadyVoted || revealLoading
+                                    hipster.id === identity?.hipsterId || alreadyVoted || revealLoading
                                   }
                                   onClick={() => handleCastVote(hipster.id)}
                                 >
@@ -848,8 +1136,10 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
                               </li>
                             ))}
                           </ul>
-                        ) : (
+                        ) : hasActiveSession ? (
                           <p className={styles.sessionHint}>Voting will resume on the next video.</p>
+                        ) : (
+                          <p className={styles.sessionHint}>Start a new session to vote again.</p>
                         )
                       ) : (
                         <p className={styles.sessionHint}>Join the bar to cast your vote.</p>
@@ -865,10 +1155,14 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
                 <section className={styles.card}>
                   <h2 className={styles.cardTitle}>Cycle controls</h2>
                   <p className={styles.sessionStatus}>
-                    {activeCycle
-                      ? "Voting is open. Close it when your crew is ready."
-                      : latestCycle
-                        ? "Voting is closed. Reveal results or move to the next video."
+                    {hasActiveSession
+                      ? activeCycle
+                        ? "Voting is open. Close it when your crew is ready."
+                        : latestCycle
+                          ? "Voting is closed. Reveal results or move to the next video."
+                          : "No cycle is active yet."
+                      : sessionState
+                        ? "Session has ended. Start a new session to brew again."
                         : "No cycle is active yet."}
                   </p>
                   <div className={styles.cycleButtons}>
@@ -876,7 +1170,7 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
                       type="button"
                       className={`${styles.primaryButton} ${styles.cycleAction}`}
                       onClick={handleRevealCycle}
-                      disabled={!hasIdentity || !activeCycle || revealLoading}
+                      disabled={!hasIdentity || !activeCycle || revealLoading || !hasActiveSession}
                     >
                       {revealLoading ? "Revealing…" : "Close voting & reveal"}
                     </button>
@@ -885,7 +1179,7 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
                       className={`${styles.secondaryButton} ${styles.cycleAction}`}
                       onClick={handleStartNextCycle}
                       disabled={
-                        !hasIdentity || !!activeCycle || nextCycleLoading || availableIngredients === 0
+                        !hasIdentity || !!activeCycle || nextCycleLoading || availableIngredients === 0 || !hasActiveSession
                       }
                     >
                       {nextCycleLoading ? "Queuing…" : "Start next video"}

@@ -11,6 +11,7 @@ public sealed record CoffeeBarResource(
     SubmissionPolicy SubmissionPolicy,
     bool SubmissionsLocked,
     bool IsClosed,
+    Guid? ActiveSessionId,
     IReadOnlyList<HipsterResource> Hipsters,
     IReadOnlyList<IngredientResource> Ingredients,
     IReadOnlyList<SubmissionResource> Submissions);

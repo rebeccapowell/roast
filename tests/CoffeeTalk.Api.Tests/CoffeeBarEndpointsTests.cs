@@ -40,11 +40,13 @@ public sealed class CoffeeBarEndpointsTests
         created.Code.Length.ShouldBe(6);
         created.Code.All(char.IsLetterOrDigit).ShouldBeTrue();
         created.Code.ToUpperInvariant().IndexOfAny("AEIOU".ToCharArray()).ShouldBe(-1);
+        created.ActiveSessionId.ShouldBeNull();
 
         var fetched = await client.GetFromJsonAsync<CoffeeBarResource>($"/coffee-bars/{created.Code}", SerializerOptions);
         fetched.ShouldNotBeNull();
         fetched!.Code.ShouldBe(created.Code);
         fetched.Theme.ShouldBe("Synthwave Showdown");
+        fetched.ActiveSessionId.ShouldBeNull();
     }
 
     [RequiresDockerFact]
@@ -144,6 +146,7 @@ public sealed class CoffeeBarEndpointsTests
         sessionState.ShouldNotBeNull();
 
         var sessionId = sessionState!.Session.Id;
+        sessionState.CoffeeBar.ActiveSessionId.ShouldBe(sessionId);
         var cycle = sessionState.Session.Cycles.ShouldHaveSingleItem();
 
         var voteResponse = await client.PostAsJsonAsync(
@@ -188,6 +191,71 @@ public sealed class CoffeeBarEndpointsTests
         nextState.ShouldNotBeNull();
         nextState!.Session.Cycles.Count.ShouldBe(2);
         nextState.Session.Cycles.Last().IsActive.ShouldBeTrue();
+    }
+
+    [RequiresDockerFact]
+    public async Task EndSession_UnlocksBarAndAllowsRestart()
+    {
+        await using var app = await BuildAndStartAppAsync();
+        await WaitForApiAsync(app);
+
+        var client = app.CreateHttpClient("coffeetalk-api");
+        var coffeeBar = await CreateCoffeeBarAsync(client);
+
+        var joinResponse = await client.PostAsJsonAsync(
+            $"/coffee-bars/{coffeeBar.Code}/hipsters",
+            new { username = "Alpha" });
+        joinResponse.EnsureSuccessStatusCode();
+        var join = await joinResponse.Content.ReadFromJsonAsync<JoinCoffeeBarResponse>(SerializerOptions);
+        join.ShouldNotBeNull();
+
+        var firstIngredient = await client.PostAsJsonAsync(
+            $"/coffee-bars/{coffeeBar.Code}/ingredients",
+            new
+            {
+                hipsterId = join!.Hipster.Id,
+                url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+            });
+
+        firstIngredient.EnsureSuccessStatusCode();
+
+        var secondIngredient = await client.PostAsJsonAsync(
+            $"/coffee-bars/{coffeeBar.Code}/ingredients",
+            new
+            {
+                hipsterId = join.Hipster.Id,
+                url = "https://www.youtube.com/watch?v=9bZkp7q19f0"
+            });
+
+        secondIngredient.EnsureSuccessStatusCode();
+
+        var sessionResponse = await client.PostAsync($"/coffee-bars/{coffeeBar.Code}/sessions", content: null);
+        sessionResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var sessionState = await sessionResponse.Content.ReadFromJsonAsync<SessionStateResource>(SerializerOptions);
+        sessionState.ShouldNotBeNull();
+        var sessionId = sessionState!.Session.Id;
+        var cycle = sessionState.Session.Cycles.ShouldHaveSingleItem();
+
+        var revealResponse = await client.PostAsJsonAsync(
+            $"/coffee-bars/{coffeeBar.Code}/sessions/{sessionId}/cycles/{cycle.Id}/reveal",
+            new { hipsterId = join.Hipster.Id });
+        revealResponse.EnsureSuccessStatusCode();
+
+        var endResponse = await client.PostAsync(
+            $"/coffee-bars/{coffeeBar.Code}/sessions/{sessionId}/end",
+            content: null);
+        endResponse.EnsureSuccessStatusCode();
+
+        var endedState = await endResponse.Content.ReadFromJsonAsync<SessionStateResource>(SerializerOptions);
+        endedState.ShouldNotBeNull();
+        endedState!.Session.EndedAt.ShouldNotBeNull();
+        endedState.CoffeeBar.SubmissionsLocked.ShouldBeFalse();
+
+        var restartResponse = await client.PostAsync($"/coffee-bars/{coffeeBar.Code}/sessions", content: null);
+        restartResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var restarted = await restartResponse.Content.ReadFromJsonAsync<SessionStateResource>(SerializerOptions);
+        restarted.ShouldNotBeNull();
+        restarted!.Session.EndedAt.ShouldBeNull();
     }
 
     private static async Task<CoffeeBarResource> CreateCoffeeBarAsync(HttpClient client)
