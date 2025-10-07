@@ -1,5 +1,6 @@
 "use client";
 
+import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./CoffeeBarClient.module.css";
 import { getIdentity, removeIdentity, saveIdentity, type HipsterIdentity } from "../../lib/identity";
@@ -119,6 +120,7 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
   const [activeView, setActiveView] = useState<"bar" | "cycle">("bar");
   const [revealResult, setRevealResult] = useState<RevealResultResource | null>(null);
   const [lastCycleId, setLastCycleId] = useState<string | null>(null);
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
 
   const loadIdentity = useCallback(() => {
     const stored = getIdentity(normalizedCode);
@@ -160,6 +162,111 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
   useEffect(() => {
     fetchCoffeeBar();
   }, [fetchCoffeeBar]);
+
+  useEffect(() => {
+    if (!API_BASE_URL) {
+      return;
+    }
+
+    let isActive = true;
+
+    const connection = new HubConnectionBuilder()
+      .withUrl(`${API_BASE_URL}/hubs/coffee-bar`)
+      .withAutomaticReconnect()
+      .configureLogging(LogLevel.Warning)
+      .build();
+
+    const handleCoffeeBarUpdated = (resource: CoffeeBarResource) => {
+      if (!isActive) {
+        return;
+      }
+
+      setCoffeeBar(resource);
+      setSessionState((current) => (current ? { ...current, coffeeBar: resource } : current));
+    };
+
+    const handleSessionUpdated = (resource: SessionStateResource) => {
+      if (!isActive) {
+        return;
+      }
+
+      setCoffeeBar(resource.coffeeBar);
+      setSessionState(resource);
+    };
+
+    const handleCycleRevealed = (response: RevealCycleResponse) => {
+      if (!isActive) {
+        return;
+      }
+
+      setCoffeeBar(response.session.coffeeBar);
+      setSessionState(response.session);
+      setRevealResult(response.reveal);
+      setActiveView("cycle");
+    };
+
+    connection.on("CoffeeBarUpdated", handleCoffeeBarUpdated);
+    connection.on("SessionUpdated", handleSessionUpdated);
+    connection.on("CycleRevealed", handleCycleRevealed);
+
+    connection.onreconnecting(() => {
+      if (!isActive) {
+        return;
+      }
+
+      setRealtimeConnected(false);
+    });
+
+    connection.onclose(() => {
+      if (!isActive) {
+        return;
+      }
+
+      setRealtimeConnected(false);
+    });
+
+    connection.onreconnected(async () => {
+      if (!isActive) {
+        return;
+      }
+
+      setRealtimeConnected(true);
+      try {
+        await connection.invoke("JoinCoffeeBar", normalizedCode);
+      } catch (err) {
+        console.error("Failed to rejoin coffee bar group", err);
+      }
+    });
+
+    const startConnection = async () => {
+      try {
+        await connection.start();
+        if (!isActive) {
+          return;
+        }
+
+        setRealtimeConnected(true);
+        await connection.invoke("JoinCoffeeBar", normalizedCode);
+      } catch (err) {
+        if (!isActive) {
+          return;
+        }
+
+        console.error("Failed to establish realtime connection", err);
+      }
+    };
+
+    void startConnection();
+
+    return () => {
+      isActive = false;
+      connection.off("CoffeeBarUpdated", handleCoffeeBarUpdated);
+      connection.off("SessionUpdated", handleSessionUpdated);
+      connection.off("CycleRevealed", handleCycleRevealed);
+      void connection.invoke("LeaveCoffeeBar", normalizedCode).catch(() => {});
+      void connection.stop().catch(() => {});
+    };
+  }, [normalizedCode]);
 
   useEffect(() => {
     if (!coffeeBar || !identity) {
@@ -410,7 +517,7 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
   );
 
   useEffect(() => {
-    if (!sessionState) {
+    if (!sessionState || realtimeConnected) {
       return;
     }
 
@@ -419,7 +526,7 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
     }, 5000);
 
     return () => window.clearInterval(interval);
-  }, [sessionState, refreshSession]);
+  }, [sessionState, refreshSession, realtimeConnected]);
 
   useEffect(() => {
     if (!sessionState) {
