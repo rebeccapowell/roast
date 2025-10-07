@@ -12,4 +12,5 @@ public sealed record CoffeeBarResource(
     bool SubmissionsLocked,
     bool IsClosed,
     IReadOnlyList<HipsterResource> Hipsters,
-    IReadOnlyList<IngredientResource> Ingredients);
+    IReadOnlyList<IngredientResource> Ingredients,
+    IReadOnlyList<SubmissionResource> Submissions);
