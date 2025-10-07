@@ -36,4 +36,13 @@ public sealed class BrewSession
         var cycle = _cycles.FirstOrDefault(cycle => cycle.Id == cycleId);
         return cycle ?? throw new DomainException("Brew cycle was not found in the session.");
     }
+
+    internal static BrewSession FromState(Guid id, Guid coffeeBarId, DateTimeOffset startedAt, IEnumerable<BrewCycle> cycles)
+    {
+        ArgumentNullException.ThrowIfNull(cycles);
+
+        var session = new BrewSession(id, coffeeBarId, startedAt);
+        session._cycles.AddRange(cycles);
+        return session;
+    }
 }

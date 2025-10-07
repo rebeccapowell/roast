@@ -35,4 +35,28 @@ public sealed class Ingredient
 
         IsConsumed = true;
     }
+
+    internal static Ingredient FromState(
+        Guid id,
+        string videoId,
+        DateTimeOffset createdAt,
+        bool isConsumed,
+        IEnumerable<Guid> submitterIds)
+    {
+        ArgumentNullException.ThrowIfNull(submitterIds);
+
+        var ingredient = new Ingredient(id, videoId, createdAt);
+
+        foreach (var hipsterId in submitterIds.Distinct())
+        {
+            ingredient.RegisterSubmission(hipsterId);
+        }
+
+        if (isConsumed)
+        {
+            ingredient.MarkConsumed();
+        }
+
+        return ingredient;
+    }
 }

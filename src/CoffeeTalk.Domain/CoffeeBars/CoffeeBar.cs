@@ -256,4 +256,37 @@ public sealed class CoffeeBar
 
         throw new DomainException("Brew cycle was not found.");
     }
+
+    internal static CoffeeBar FromState(
+        Guid id,
+        string code,
+        string theme,
+        int defaultMaxIngredientsPerHipster,
+        SubmissionPolicy submissionPolicy,
+        bool submissionsLocked,
+        IEnumerable<Hipster> hipsters,
+        IEnumerable<Ingredient> ingredients,
+        IEnumerable<Submission> submissions,
+        IEnumerable<BrewSession> sessions)
+    {
+        ArgumentNullException.ThrowIfNull(hipsters);
+        ArgumentNullException.ThrowIfNull(ingredients);
+        ArgumentNullException.ThrowIfNull(submissions);
+        ArgumentNullException.ThrowIfNull(sessions);
+
+        var coffeeBar = new CoffeeBar(
+            id,
+            CoffeeBarCode.From(code),
+            theme,
+            defaultMaxIngredientsPerHipster,
+            submissionPolicy);
+
+        coffeeBar._submissionsLocked = submissionsLocked;
+        coffeeBar._hipsters.AddRange(hipsters);
+        coffeeBar._ingredients.AddRange(ingredients);
+        coffeeBar._submissions.AddRange(submissions);
+        coffeeBar._sessions.AddRange(sessions);
+
+        return coffeeBar;
+    }
 }
