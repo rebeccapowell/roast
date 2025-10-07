@@ -1,5 +1,6 @@
 using System.Linq;
 using CoffeeTalk.Api.Contracts.CoffeeBars;
+using CoffeeTalk.Domain;
 using CoffeeTalk.Domain.BrewSessions;
 using CoffeeTalk.Domain.CoffeeBars;
 using CoffeeTalk.Infrastructure.Data.Repositories;
@@ -29,7 +30,17 @@ public sealed class CoffeeBarHub(ICoffeeBarRepository repository) : Hub<ICoffeeB
         await Groups.AddToGroupAsync(Context.ConnectionId, GetGroupName(normalized), cancellationToken)
             .ConfigureAwait(false);
 
-        var coffeeBar = await _repository.GetByCodeAsync(normalized, cancellationToken).ConfigureAwait(false);
+        CoffeeBar? coffeeBar;
+
+        try
+        {
+            coffeeBar = await _repository.GetByCodeAsync(normalized, cancellationToken).ConfigureAwait(false);
+        }
+        catch (DomainException)
+        {
+            return;
+        }
+
         if (coffeeBar is null)
         {
             return;
@@ -59,7 +70,12 @@ public sealed class CoffeeBarHub(ICoffeeBarRepository repository) : Hub<ICoffeeB
             return;
         }
 
-        var reveal = CreateRevealResource(coffeeBar, latestCycle);
+        var reveal = TryCreateRevealResource(coffeeBar, latestCycle);
+        if (reveal is null)
+        {
+            return;
+        }
+
         await Clients.Caller.CycleRevealed(new RevealCycleResponse(sessionResource, reveal)).ConfigureAwait(false);
     }
 
@@ -72,9 +88,14 @@ public sealed class CoffeeBarHub(ICoffeeBarRepository repository) : Hub<ICoffeeB
         return code.Trim().ToUpperInvariant();
     }
 
-    private static RevealResultResource CreateRevealResource(CoffeeBar coffeeBar, BrewCycle cycle)
+    private static RevealResultResource? TryCreateRevealResource(CoffeeBar coffeeBar, BrewCycle cycle)
     {
-        var ingredient = coffeeBar.Ingredients.First(ingredient => ingredient.Id == cycle.IngredientId);
+        var ingredient = coffeeBar.Ingredients.FirstOrDefault(ingredient => ingredient.Id == cycle.IngredientId);
+
+        if (ingredient is null)
+        {
+            return null;
+        }
 
         var tally = cycle.Votes
             .GroupBy(vote => vote.TargetHipsterId)

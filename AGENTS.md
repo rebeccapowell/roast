@@ -29,4 +29,5 @@ These guidelines apply to the entire repository unless a more specific `AGENTS.m
 - After installation, ensure the current session can find the SDK by exporting the path: `export PATH="$HOME/.dotnet:$PATH"`. Persist the change in your shell profile if you need the SDK in new sessions.
 - Always run `dotnet build` and `dotnet test` (and relevant frontend test/build commands when frontend code is touched) before completing work.
 - Ensure automated tests cover key business rules described in the PRD, especially around the domain model.
+- When updating the Next.js client, run `CI=1 npm run lint` and `CI=1 npm run build` to verify the bundle compiles cleanly.
 

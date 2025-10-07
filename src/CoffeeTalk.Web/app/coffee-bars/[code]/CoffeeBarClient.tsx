@@ -121,6 +121,7 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
   const [revealResult, setRevealResult] = useState<RevealResultResource | null>(null);
   const [lastCycleId, setLastCycleId] = useState<string | null>(null);
   const [realtimeConnected, setRealtimeConnected] = useState(false);
+  const [playerCycle, setPlayerCycle] = useState<BrewCycleResource | null>(null);
 
   const loadIdentity = useCallback(() => {
     const stored = getIdentity(normalizedCode);
@@ -129,31 +130,46 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
     }
   }, [normalizedCode]);
 
+  const requestCoffeeBar = useCallback(async () => {
+    const response = await fetch(`${API_BASE_URL}/coffee-bars/${normalizedCode}`);
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error("We couldn't find this coffee bar. Check the code and try again.");
+      }
+
+      const payload = await response.json().catch(() => null);
+      throw new Error((payload && (payload.detail ?? payload.title)) || "Unable to load this coffee bar.");
+    }
+
+    return (await response.json()) as CoffeeBarResource;
+  }, [normalizedCode]);
+
   const fetchCoffeeBar = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/coffee-bars/${normalizedCode}`);
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error("We couldn't find this coffee bar. Check the code and try again.");
-        }
-
-        const payload = await response.json().catch(() => null);
-        throw new Error((payload && (payload.detail ?? payload.title)) || "Unable to load this coffee bar.");
-      }
-
-      const data = (await response.json()) as CoffeeBarResource;
+      const data = await requestCoffeeBar();
       setCoffeeBar(data);
-      setLoading(false);
       return data;
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Unable to load this coffee bar.");
+      return null;
+    } finally {
       setLoading(false);
+    }
+  }, [requestCoffeeBar]);
+
+  const refreshCoffeeBar = useCallback(async () => {
+    try {
+      const data = await requestCoffeeBar();
+      setCoffeeBar(data);
+      return data;
+    } catch (err) {
+      console.error(err);
       return null;
     }
-  }, [normalizedCode]);
+  }, [requestCoffeeBar]);
 
   useEffect(() => {
     loadIdentity();
@@ -350,6 +366,16 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
     [sessionCycles],
   );
 
+  useEffect(() => {
+    if (latestCycle) {
+      setPlayerCycle(latestCycle);
+    } else if (!sessionState) {
+      setPlayerCycle(null);
+    }
+  }, [latestCycle, sessionState]);
+
+  const cycleForPlayer = playerCycle ?? latestCycle;
+
   const hipsterNameById = useMemo(() => {
     if (!coffeeBar) {
       return new Map<string, string>();
@@ -506,7 +532,7 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
 
         if (response.status === 404) {
           setVoteError("We couldn't find that submission anymore.");
-          await fetchCoffeeBar();
+          await refreshCoffeeBar();
           return;
         }
 
@@ -524,7 +550,7 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
         setVoteError("Something went wrong while removing the URL.");
       }
     },
-    [identity, normalizedCode, fetchCoffeeBar],
+    [identity, normalizedCode, refreshCoffeeBar],
   );
 
   const refreshSession = useCallback(
@@ -546,16 +572,26 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
   );
 
   useEffect(() => {
-    if (!sessionState || realtimeConnected) {
+    if (realtimeConnected) {
+      return;
+    }
+
+    if (!coffeeBar && !sessionState) {
       return;
     }
 
     const interval = window.setInterval(() => {
-      refreshSession(sessionState.session.id);
+      if (coffeeBar) {
+        void refreshCoffeeBar();
+      }
+
+      if (sessionState) {
+        void refreshSession(sessionState.session.id);
+      }
     }, 5000);
 
     return () => window.clearInterval(interval);
-  }, [sessionState, refreshSession, realtimeConnected]);
+  }, [coffeeBar, realtimeConnected, refreshCoffeeBar, refreshSession, sessionState]);
 
   useEffect(() => {
     if (!sessionState) {
@@ -947,13 +983,15 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
             <div className={styles.cycleView}>
               <section className={styles.card}>
                 <h2 className={styles.cardTitle}>Now playing</h2>
-                {sessionState && latestCycle ? (
+                {sessionState && cycleForPlayer ? (
                   <div className={styles.playerArea}>
                     <div className={styles.playerWrapper}>
                       <iframe
-                        key={latestCycle.id}
+                        key={cycleForPlayer.id}
                         className={styles.player}
-                        src={`https://www.youtube.com/embed/${latestCycle.videoId}?autoplay=${activeCycle ? 1 : 0}`}
+                        src={`https://www.youtube.com/embed/${cycleForPlayer.videoId}?autoplay=${
+                          activeCycle && activeCycle.id === cycleForPlayer.id ? 1 : 0
+                        }`}
                         title="Coffee Talk Video"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
