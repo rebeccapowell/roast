@@ -7,6 +7,9 @@ var postgres = builder.AddPostgres("postgres");
 
 var coffeeTalkDb = postgres.AddDatabase("coffeetalkdb");
 
+builder.AddProject<Projects.CoffeeTalk_Api>("coffeetalk-api")
+    .WithReference(coffeeTalkDb);
+
 builder.AddProject<Projects.CoffeeTalk_Migrations>("coffeetalk-migrator")
     .WithReference(coffeeTalkDb)
     .WaitForCompletion(coffeeTalkDb);
