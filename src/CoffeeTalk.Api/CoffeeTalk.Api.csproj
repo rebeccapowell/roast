@@ -3,6 +3,7 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>9236e496-099a-4d3e-a53a-a6e3ccbfa483</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\CoffeeTalk.Domain\CoffeeTalk.Domain.csproj" />
