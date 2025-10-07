@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\CoffeeTalk.Domain\CoffeeTalk.Domain.csproj" />
+    <ProjectReference Include="..\CoffeeTalk.Infrastructure\CoffeeTalk.Infrastructure.csproj" />
     <ProjectReference Include="..\CoffeeTalk.ServiceDefaults\CoffeeTalk.ServiceDefaults.csproj" />
   </ItemGroup>
   <ItemGroup>
