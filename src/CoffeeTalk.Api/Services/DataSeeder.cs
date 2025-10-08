@@ -21,15 +21,11 @@ public sealed class DataSeeder
     {
         if (_resetOnStartup)
         {
-            // Purge existing data
-            await _context.Database.EnsureDeletedAsync();
-            await _context.Database.EnsureCreatedAsync();
+            _context.CoffeeBars.RemoveRange(_context.CoffeeBars);
+            await _context.SaveChangesAsync();
         }
         else
         {
-            await _context.Database.EnsureCreatedAsync();
-
-            // Check if we already have data
             if (await _context.CoffeeBars.AnyAsync())
             {
                 return;
