@@ -4,11 +4,15 @@ import { FormEvent, useMemo, useState } from "react";
 import styles from "@/app/page.module.css";
 import { saveIdentity } from "@/lib/identity";
 import type { JoinCoffeeBarResponse } from "@/types/resources";
-
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(
-  /\/$/,
-  ""
-);
+import {
+  API_BASE_URL,
+  USERNAME_MIN_LENGTH,
+  USERNAME_MAX_LENGTH,
+  COFFEE_BAR_CODE_LENGTH,
+  DEFAULT_USERNAME_PLACEHOLDER,
+  JSON_HEADERS,
+  HTTP_METHODS,
+} from "@/constants";
 
 export function JoinCoffeeBarForm() {
   const [code, setCode] = useState("");
@@ -42,8 +46,8 @@ export function JoinCoffeeBarForm() {
       const joinResponse = await fetch(
         `${API_BASE_URL}/coffee-bars/${normalizedCode}/hipsters`,
         {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: HTTP_METHODS.POST,
+          headers: JSON_HEADERS,
           body: JSON.stringify({ username }),
         }
       );
@@ -103,8 +107,8 @@ export function JoinCoffeeBarForm() {
             value={code}
             onChange={(event) => setCode(event.target.value)}
             required
-            minLength={6}
-            maxLength={6}
+            minLength={COFFEE_BAR_CODE_LENGTH}
+            maxLength={COFFEE_BAR_CODE_LENGTH}
             disabled={loading}
           />
         </div>
@@ -116,12 +120,12 @@ export function JoinCoffeeBarForm() {
             id="username"
             name="username"
             className={styles.input}
-            placeholder="DJ Espresso"
+            placeholder={DEFAULT_USERNAME_PLACEHOLDER}
             value={username}
             onChange={(event) => setUsername(event.target.value)}
             required
-            minLength={3}
-            maxLength={20}
+            minLength={USERNAME_MIN_LENGTH}
+            maxLength={USERNAME_MAX_LENGTH}
             disabled={loading}
           />
         </div>

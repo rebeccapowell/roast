@@ -7,12 +7,15 @@ import type {
   SubmissionPolicy,
   CreateCoffeeBarResponse,
 } from "@/types/resources";
-
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(
-  /\/$/,
-  ""
-);
-const DEFAULT_QUOTA = 5;
+import {
+  API_BASE_URL,
+  DEFAULT_QUOTA,
+  USERNAME_MIN_LENGTH,
+  USERNAME_MAX_LENGTH,
+  DEFAULT_USERNAME_PLACEHOLDER,
+  JSON_HEADERS,
+  HTTP_METHODS,
+} from "@/constants";
 
 export function CreateCoffeeBarForm() {
   const [theme, setTheme] = useState("");
@@ -47,8 +50,8 @@ export function CreateCoffeeBarForm() {
 
     try {
       const response = await fetch(`${API_BASE_URL}/coffee-bars`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: HTTP_METHODS.POST,
+        headers: JSON_HEADERS,
         body: JSON.stringify({
           theme,
           defaultMaxIngredientsPerHipster: quota,
@@ -152,12 +155,12 @@ export function CreateCoffeeBarForm() {
             id="creatorUsername"
             name="creatorUsername"
             className={styles.input}
-            placeholder="DJ Espresso"
+            placeholder={DEFAULT_USERNAME_PLACEHOLDER}
             value={username}
             onChange={(event) => setUsername(event.target.value)}
             required
-            minLength={3}
-            maxLength={20}
+            minLength={USERNAME_MIN_LENGTH}
+            maxLength={USERNAME_MAX_LENGTH}
             disabled={loading}
           />
         </div>

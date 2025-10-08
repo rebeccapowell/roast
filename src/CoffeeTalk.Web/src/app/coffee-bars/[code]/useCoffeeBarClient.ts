@@ -16,6 +16,7 @@ import {
   saveIdentity,
   type HipsterIdentity,
 } from "@/lib/identity";
+import { API_BASE_URL, JSON_HEADERS, HTTP_METHODS } from "@/constants";
 import type {
   BrewCycleResource,
   CoffeeBarLeaderboardResource,
@@ -30,11 +31,6 @@ import type {
   SubmissionResource,
   SubmitIngredientResponse,
 } from "@/types/resources";
-
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(
-  /\/$/,
-  ""
-);
 
 export const OVERALL_LEADERBOARD = "overall" as const;
 
@@ -721,8 +717,8 @@ export function useCoffeeBarClient(code: string): UseCoffeeBarClientResult {
         const response = await fetch(
           `${API_BASE_URL}/coffee-bars/${normalizedCode}/hipsters`,
           {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+            method: HTTP_METHODS.POST,
+            headers: JSON_HEADERS,
             body: JSON.stringify({ username: trimmed }),
           }
         );

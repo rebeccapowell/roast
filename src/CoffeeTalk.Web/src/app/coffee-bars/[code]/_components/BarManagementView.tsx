@@ -1,6 +1,7 @@
 import { type HipsterIdentity } from "@/lib/identity";
 import sharedStyles from "@/app/coffee-bars/[code]/CoffeeBarShared.module.css";
 import styles from "@/app/coffee-bars/[code]/_components/BarManagementView.module.css";
+import { USERNAME_MIN_LENGTH, USERNAME_MAX_LENGTH } from "@/constants";
 import type {
   CoffeeBarResource,
   IngredientResource,
@@ -161,8 +162,8 @@ export function BarManagementView({
                 onChange={(event) => join.setUsername(event.target.value)}
                 placeholder="Your username"
                 required
-                minLength={3}
-                maxLength={20}
+                minLength={USERNAME_MIN_LENGTH}
+                maxLength={USERNAME_MAX_LENGTH}
                 disabled={join.loading}
               />
               <button
