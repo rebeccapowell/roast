@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using System.Linq;
 using CoffeeTalk.Domain.CoffeeBars;
 using CoffeeTalk.Infrastructure.Data.Entities;
 using CoffeeTalk.Infrastructure.Data.Mappings;
@@ -120,7 +118,19 @@ public sealed class CoffeeBarRepository(CoffeeTalkDbContext dbContext) : ICoffee
                     },
                     cycle => _dbContext.Entry(cycle).State = EntityState.Added);
             },
-            session => _dbContext.Entry(session).State = EntityState.Added);
+            session =>
+            {
+                _dbContext.Entry(session).State = EntityState.Added;
+                // Mark all cycles and votes in the new session as Added
+                foreach (var cycle in session.Cycles)
+                {
+                    _dbContext.Entry(cycle).State = EntityState.Added;
+                    foreach (var vote in cycle.Votes)
+                    {
+                        _dbContext.Entry(vote).State = EntityState.Added;
+                    }
+                }
+            });
     }
 
     private static void SyncCollection<TEntity>(

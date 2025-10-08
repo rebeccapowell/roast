@@ -9,6 +9,8 @@ builder.AddContainer("pgadmin", "dpage/pgadmin4:latest")
     .WithHttpEndpoint(targetPort: 80, name: "http", port: 5050)
     .WithEnvironment("PGADMIN_DEFAULT_EMAIL", "admin@example.com")
     .WithEnvironment("PGADMIN_DEFAULT_PASSWORD", "admin")
+    .WithBindMount("./pgadmin-servers.json", "/pgadmin4/servers.json")
+    .WithVolume("pgadmin-data", "/var/lib/pgadmin")
     .WithReference(postgres);
 
 var migrations = builder.AddProject<Projects.CoffeeTalk_Migrations>("coffeetalk-migrator")
