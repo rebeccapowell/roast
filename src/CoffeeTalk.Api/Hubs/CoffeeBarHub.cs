@@ -1,11 +1,8 @@
-using System.Linq;
 using CoffeeTalk.Api.Contracts.CoffeeBars;
 using CoffeeTalk.Domain;
 using CoffeeTalk.Domain.BrewSessions;
 using CoffeeTalk.Domain.CoffeeBars;
-using CoffeeTalk.Infrastructure.Data.Repositories;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.Logging;
 
 namespace CoffeeTalk.Api.Hubs;
 
@@ -25,7 +22,7 @@ public sealed class CoffeeBarHub(ICoffeeBarRepository repository, ILogger<Coffee
 
     public static string GetGroupName(string code) => $"coffee-bar:{NormalizeCode(code)}";
 
-    public async Task JoinCoffeeBar(string code, CancellationToken cancellationToken = default)
+    public async Task JoinCoffeeBar(string code)
     {
         if (string.IsNullOrWhiteSpace(code))
         {
@@ -41,7 +38,7 @@ public sealed class CoffeeBarHub(ICoffeeBarRepository repository, ILogger<Coffee
 
         try
         {
-            coffeeBar = await _repository.GetByCodeAsync(normalized, cancellationToken).ConfigureAwait(false);
+            coffeeBar = await _repository.GetByCodeAsync(normalized).ConfigureAwait(false);
         }
         catch (DomainException ex)
         {
@@ -65,7 +62,7 @@ public sealed class CoffeeBarHub(ICoffeeBarRepository repository, ILogger<Coffee
 
         try
         {
-            await Groups.AddToGroupAsync(Context.ConnectionId, GetGroupName(normalized), cancellationToken)
+            await Groups.AddToGroupAsync(Context.ConnectionId, GetGroupName(normalized))
                 .ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -122,8 +119,8 @@ public sealed class CoffeeBarHub(ICoffeeBarRepository repository, ILogger<Coffee
         }
     }
 
-    public Task LeaveCoffeeBar(string code, CancellationToken cancellationToken = default) =>
-        Groups.RemoveFromGroupAsync(Context.ConnectionId, GetGroupName(code), cancellationToken);
+    public Task LeaveCoffeeBar(string code) =>
+        Groups.RemoveFromGroupAsync(Context.ConnectionId, GetGroupName(code));
 
     private static string NormalizeCode(string code)
     {

@@ -58,7 +58,10 @@ builder.Services.AddHttpClient<IYouTubeMetadataProvider, YouTubeMetadataProvider
 });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options =>
+{
+    options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+});
 
 var app = builder.Build();
 
