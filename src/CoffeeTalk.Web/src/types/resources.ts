@@ -36,6 +36,11 @@ export type CoffeeBarResource = {
   submissions: SubmissionResource[];
 };
 
+export type CreateCoffeeBarResponse = {
+  coffeeBar: CoffeeBarResource;
+  hipster: HipsterResource;
+};
+
 export type SubmitIngredientResponse = {
   coffeeBar: CoffeeBarResource;
   ingredient: IngredientResource;

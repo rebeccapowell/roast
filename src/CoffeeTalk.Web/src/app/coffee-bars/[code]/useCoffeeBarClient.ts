@@ -29,7 +29,7 @@ import type {
   SessionStateResource,
   SubmissionResource,
   SubmitIngredientResponse,
-} from "@/app/coffee-bars/[code]/types";
+} from "@/types/resources";
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(
   /\/$/,

@@ -6,7 +6,7 @@ import type {
   IngredientResource,
   SubmissionResource,
   SessionStateResource,
-} from "@/app/coffee-bars/[code]/types";
+} from "@/types/resources";
 import type { UseCoffeeBarClientResult } from "@/app/coffee-bars/[code]/useCoffeeBarClient";
 
 type SubmissionSummary = {

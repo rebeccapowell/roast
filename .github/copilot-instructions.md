@@ -14,10 +14,12 @@ The repository is a monorepo containing a .NET backend and a Next.js frontend, o
   - `CoffeeTalk.ServiceDefaults`: Provides shared configurations for .NET projects.
 
 - **Next.js Frontend (`src/CoffeeTalk.Web/`):**
-  - A TypeScript application using the App Router.
+  - A TypeScript application using the nextjs App Router.
+  - nextjs 15 with src/app directory structure.
   - Communicates with the .NET API for data and uses a SignalR client to receive real-time updates.
   - Key components are located in `src/CoffeeTalk.Web/src/app/`. For example, the main coffee bar interface is in `src/CoffeeTalk.Web/src/app/coffee-bars/[code]/`.
-  - Components are organized into server components (default) and client components (with `"use client"` directive) and will be found in `src/CoffeeTalk.Web/src/components/`.
+  - Components are organized into server components (default) and client components (with `"use client"` directive).
+  - Reusable components are in `src/CoffeeTalk.Web/src/components/` while colocated components are in their respective route folders. For example in `src/CoffeeTalk.Web/src/app/coffee-bars/[code]/_components`.
   - Utils and hooks are in `src/CoffeeTalk.Web/src/lib/` and `src/CoffeeTalk.Web/src/hooks/`.
   - Styles that belong to specific components are co-located with them.
   - Functional components are preferred over class components.
@@ -27,8 +29,9 @@ The repository is a monorepo containing a .NET backend and a Next.js frontend, o
   - Server-side data fetching and manipulation is done in `src/CoffeeTalk.Web/src/actions/`.
   - keep DRY principles in mind.
   - API calls are made using the `fetch` API.
-  - use approuter features like layouts, templates, and error handling. directories under `src/CoffeeTalk.Web/src/app/` represent routes and sub-routes. if a directory or its children contains a `page.tsx` file, it corresponds to a route.
-  - use the alias `@/` to reference the `src/` directory.
+  - never create a folder named `components` under `src/CoffeeTalk.Web/src/app/` as this will interfere with the routing system. If you need to colocate components, use `_components` as the folder name.
+  - use the alias `@/` to reference the `src/CoffeeTalk.Web/src/` directory.
+  - do data fetching in server components and use client components for interactivity.
 
 ## Developer Workflow
 

@@ -1,4 +1,4 @@
-import type { SubmissionPolicy } from "@/app/coffee-bars/[code]/types";
+import type { SubmissionPolicy } from "@/types/resources";
 import type { ActiveView } from "@/app/coffee-bars/[code]/useCoffeeBarClient";
 import pageStyles from "@/app/coffee-bars/[code]/CoffeeBarPage.module.css";
 import sharedStyles from "@/app/coffee-bars/[code]/CoffeeBarShared.module.css";

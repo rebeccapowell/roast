@@ -3,46 +3,10 @@
 import { FormEvent, useMemo, useState } from "react";
 import styles from "@/app/page.module.css";
 import { saveIdentity } from "@/lib/identity";
-
-type SubmissionPolicy = "LockOnFirstBrew" | "AlwaysOpen";
-
-type HipsterResource = {
-  id: string;
-  username: string;
-  maxIngredientQuota: number;
-};
-
-type IngredientResource = {
-  id: string;
-  videoId: string;
-  isConsumed: boolean;
-  submitterIds: string[];
-};
-
-type SubmissionResource = {
-  id: string;
-  ingredientId: string;
-  hipsterId: string;
-  submittedAt: string;
-};
-
-type CoffeeBarResource = {
-  id: string;
-  code: string;
-  theme: string;
-  defaultMaxIngredientsPerHipster: number;
-  submissionPolicy: SubmissionPolicy;
-  submissionsLocked: boolean;
-  isClosed: boolean;
-  hipsters: HipsterResource[];
-  ingredients: IngredientResource[];
-  submissions: SubmissionResource[];
-};
-
-type CreateCoffeeBarResponse = {
-  coffeeBar: CoffeeBarResource;
-  hipster: HipsterResource;
-};
+import type {
+  SubmissionPolicy,
+  CreateCoffeeBarResponse,
+} from "@/types/resources";
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(
   /\/$/,

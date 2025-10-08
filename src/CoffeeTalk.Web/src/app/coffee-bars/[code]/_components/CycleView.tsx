@@ -4,7 +4,7 @@ import styles from "@/app/coffee-bars/[code]/_components/CycleView.module.css";
 import type {
   CoffeeBarResource,
   SessionStateResource,
-} from "@/app/coffee-bars/[code]/types";
+} from "@/types/resources";
 import type { UseCoffeeBarClientResult } from "@/app/coffee-bars/[code]/useCoffeeBarClient";
 import { YouTubeEmbed } from "@/app/coffee-bars/[code]/_components/YouTubeEmbed";
 
