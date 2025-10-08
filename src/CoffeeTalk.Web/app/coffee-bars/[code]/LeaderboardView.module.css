@@ -1,0 +1,152 @@
+.leaderboardView {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.leaderboardHeader {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.leaderboardHint {
+  margin: 0.35rem 0 0;
+  font-size: 0.95rem;
+  color: #5a3b33;
+}
+
+.leaderboardControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.leaderboardLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #6f4a3f;
+}
+
+.leaderboardSelect {
+  border-radius: 999px;
+  border: 1px solid #d3b49f;
+  padding: 0.45rem 1rem;
+  background: #fff;
+  color: #3f2626;
+  font-weight: 600;
+}
+
+.leaderboardTableWrapper {
+  overflow-x: auto;
+}
+
+.leaderboardTable {
+  width: 100%;
+  min-width: 480px;
+  border-collapse: separate;
+  border-spacing: 0 0.5rem;
+}
+
+.leaderboardTable th {
+  text-align: left;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8b5e3c;
+  padding: 0 1rem;
+}
+
+.leaderboardTrendColumn,
+.leaderboardScoreColumn {
+  text-align: right;
+}
+
+.leaderboardRow {
+  background: rgba(139, 94, 60, 0.1);
+  border-radius: 14px;
+}
+
+.leaderboardRow td {
+  padding: 0.75rem 1rem;
+  vertical-align: middle;
+}
+
+.leaderboardRow td:first-child {
+  border-top-left-radius: 14px;
+  border-bottom-left-radius: 14px;
+}
+
+.leaderboardRow td:last-child {
+  border-top-right-radius: 14px;
+  border-bottom-right-radius: 14px;
+}
+
+.leaderboardMeRow {
+  background: rgba(139, 94, 60, 0.22);
+  box-shadow: 0 0 0 2px rgba(139, 94, 60, 0.4) inset;
+}
+
+.leaderboardMeRow td {
+  font-weight: 700;
+}
+
+.leaderboardRankCell {
+  width: 4rem;
+  font-weight: 700;
+  color: #5a3b33;
+}
+
+.leaderboardNameCell {
+  font-weight: 600;
+}
+
+.leaderboardTrendCell,
+.leaderboardScoreCell {
+  text-align: right;
+  font-weight: 600;
+}
+
+.leaderboardTrendIndicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+  min-width: 2.2rem;
+}
+
+.leaderboardTrendUp {
+  background: rgba(31, 128, 88, 0.18);
+  color: #1f8058;
+}
+
+.leaderboardTrendDown {
+  background: rgba(180, 35, 24, 0.18);
+  color: #8f2b20;
+}
+
+.leaderboardStatus {
+  text-align: center;
+  font-size: 0.95rem;
+  color: #6f4a3f;
+}
+
+.leaderboardTrend {
+  font-size: 0.95rem;
+  color: #5a3b33;
+}
+
+.leaderboardSessionMeta {
+  font-size: 0.9rem;
+  color: #5a3b33;
+  margin: 0.5rem 0 0;
+}

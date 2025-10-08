@@ -1,0 +1,202 @@
+.cycleView {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.cycleToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cycleToolbarStatus {
+  font-size: 0.95rem;
+  color: #5a3b33;
+}
+
+.playerArea {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+@media (min-width: 900px) {
+  .playerArea {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+}
+
+.playerColumn {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.playerWrapper {
+  background: #000;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+}
+
+.player {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.playerPlaceholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-weight: 600;
+  color: rgba(255, 250, 245, 0.85);
+  padding: 1rem;
+}
+
+.videoTitle {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #3f2626;
+}
+
+.voteSidebar {
+  flex: 1;
+  background: #fff7eb;
+  border-radius: 18px;
+  padding: 1.5rem;
+  box-shadow: 0 12px 24px rgba(75, 46, 46, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  min-width: 280px;
+}
+
+.cycleButtons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+@media (min-width: 520px) {
+  .cycleButtons {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .cycleButtons > * {
+    flex: 1;
+  }
+}
+
+.voteSummary {
+  font-size: 0.95rem;
+  color: #5a3b33;
+}
+
+.voteList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.voteButton {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  border: none;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 600;
+  color: #3f2626;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.voteButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.voteButton:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(75, 46, 46, 0.18);
+}
+
+.sidebarSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sidebarHeading {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #3f2626;
+}
+
+.revealSummary {
+  background: rgba(139, 94, 60, 0.12);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.95rem;
+}
+
+.tallyList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tallyRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(139, 94, 60, 0.1);
+  padding: 0.6rem 0.9rem;
+  border-radius: 10px;
+}
+
+.tallyCount {
+  font-weight: 700;
+  color: #5a3b33;
+}
+
+.sidebarHipsterList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sidebarHipsterList li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.45rem 0.65rem;
+  border-radius: 10px;
+  background: rgba(139, 94, 60, 0.08);
+}

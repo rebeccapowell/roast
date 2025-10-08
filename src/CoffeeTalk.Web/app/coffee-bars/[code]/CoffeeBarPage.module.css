@@ -1,0 +1,109 @@
+.page {
+  min-height: 100vh;
+  background: #fdf6e3;
+  color: #3f2626;
+  padding: 1.5rem clamp(1rem, 4vw, 4rem);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.loading,
+.error {
+  margin: auto;
+  padding: 1.5rem 2rem;
+  border-radius: 14px;
+  background: rgba(139, 94, 60, 0.08);
+  font-size: 1.1rem;
+  text-align: center;
+  max-width: 32rem;
+}
+
+.error {
+  background: rgba(180, 35, 24, 0.1);
+  color: #7a2118;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 0.75rem 2rem;
+  text-align: left;
+}
+
+.headerInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.headerActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+  min-width: 0;
+  text-align: right;
+}
+
+@media (max-width: 700px) {
+  .headerActions {
+    align-items: flex-start;
+    text-align: left;
+  }
+}
+
+.headerTop {
+  font-size: 0.95rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #7a5c5c;
+  margin-bottom: 0.2rem;
+}
+
+.title {
+  font-size: clamp(2rem, 3vw + 1rem, 3rem);
+  margin: 0;
+}
+
+.shareHint {
+  font-size: 0.95rem;
+  color: #5a3b33;
+  margin: 0;
+}
+
+.policy {
+  font-size: 0.9rem;
+  color: #6f4a3f;
+  margin: 0;
+}
+
+.viewSwitcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.viewButton {
+  border: none;
+  border-radius: 999px;
+  padding: 0.6rem 1.4rem;
+  background: rgba(139, 94, 60, 0.16);
+  color: #5a3b33;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.viewButton:hover {
+  background: rgba(139, 94, 60, 0.25);
+}
+
+.viewButtonActive {
+  background: #8b5e3c;
+  color: #fffaf5;
+}
