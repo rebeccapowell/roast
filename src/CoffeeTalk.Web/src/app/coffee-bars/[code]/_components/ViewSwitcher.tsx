@@ -1,5 +1,5 @@
-import type { ActiveView } from "../useCoffeeBarClient";
-import styles from "../CoffeeBarPage.module.css";
+import type { ActiveView } from "@/app/coffee-bars/[code]/useCoffeeBarClient";
+import styles from "@/app/coffee-bars/[code]/CoffeeBarPage.module.css";
 
 const VIEW_OPTIONS: { view: ActiveView; label: string }[] = [
   { view: "cycle", label: "Cycle view" },

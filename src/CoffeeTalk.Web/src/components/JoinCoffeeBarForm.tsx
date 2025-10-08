@@ -1,8 +1,8 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import styles from "../page.module.css";
-import { saveIdentity } from "../lib/identity";
+import styles from "@/app/page.module.css";
+import { saveIdentity } from "@/lib/identity";
 
 type SubmissionPolicy = "LockOnFirstBrew" | "AlwaysOpen";
 
@@ -44,7 +44,10 @@ type JoinCoffeeBarResponse = {
   hipster: HipsterResource;
 };
 
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/$/, "");
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(
+  /\/$/,
+  ""
+);
 
 export function JoinCoffeeBarForm() {
   const [code, setCode] = useState("");
@@ -75,20 +78,28 @@ export function JoinCoffeeBarForm() {
     setResult(null);
 
     try {
-      const joinResponse = await fetch(`${API_BASE_URL}/coffee-bars/${normalizedCode}/hipsters`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username }),
-      });
+      const joinResponse = await fetch(
+        `${API_BASE_URL}/coffee-bars/${normalizedCode}/hipsters`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username }),
+        }
+      );
 
       const payload = await joinResponse.json();
       if (joinResponse.status === 404) {
-        setError("We couldn't find a coffee bar with that code. Double-check the six characters.");
+        setError(
+          "We couldn't find a coffee bar with that code. Double-check the six characters."
+        );
         return;
       }
 
       if (!joinResponse.ok) {
-        setError((payload && (payload.detail ?? payload.title)) || "We couldn't join that coffee bar.");
+        setError(
+          (payload && (payload.detail ?? payload.title)) ||
+            "We couldn't join that coffee bar."
+        );
         return;
       }
 
@@ -103,7 +114,9 @@ export function JoinCoffeeBarForm() {
       setUsername("");
     } catch (err) {
       console.error(err);
-      setError("Something went wrong while joining the coffee bar. Please try again.");
+      setError(
+        "Something went wrong while joining the coffee bar. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -113,7 +126,8 @@ export function JoinCoffeeBarForm() {
     <section className={styles.card}>
       <h2 className={styles.cardTitle}>Join a Coffee Bar</h2>
       <p className={styles.cardSubtitle}>
-        Enter the bar code you received and choose your handle. Once you’re in you can start queuing ingredients.
+        Enter the bar code you received and choose your handle. Once you’re in
+        you can start queuing ingredients.
       </p>
       <form className={styles.form} onSubmit={handleSubmit}>
         <div className={styles.fieldGroup}>
@@ -150,7 +164,11 @@ export function JoinCoffeeBarForm() {
             disabled={loading}
           />
         </div>
-        <button className={styles.submitButton} type="submit" disabled={loading}>
+        <button
+          className={styles.submitButton}
+          type="submit"
+          disabled={loading}
+        >
           {loading ? "Joining..." : "Join bar"}
         </button>
       </form>
@@ -159,16 +177,21 @@ export function JoinCoffeeBarForm() {
           <strong>Welcome, {result.hipster.username}!</strong>
           <div>Hipster ID: {result.hipster.id}</div>
           <div>
-            You can submit up to {result.hipster.maxIngredientQuota} ingredients in {result.coffeeBar.theme}.
+            You can submit up to {result.hipster.maxIngredientQuota} ingredients
+            in {result.coffeeBar.theme}.
           </div>
           <div>Remember this bar code: {result.coffeeBar.code}</div>
           {shareLink && (
             <div className={styles.shareLink}>
-              Invite others with this link: <a className={styles.shareAnchor} href={shareLink}>{shareLink}</a>
+              Invite others with this link:{" "}
+              <a className={styles.shareAnchor} href={shareLink}>
+                {shareLink}
+              </a>
             </div>
           )}
           <div className={styles.identityHint}>
-            We’ve saved your spot so you can hop straight into the bar next time.
+            We’ve saved your spot so you can hop straight into the bar next
+            time.
           </div>
         </div>
       )}

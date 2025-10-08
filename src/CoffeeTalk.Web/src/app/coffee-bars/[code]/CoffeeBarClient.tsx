@@ -1,11 +1,11 @@
 "use client";
 
-import pageStyles from "./CoffeeBarPage.module.css";
-import { BarManagementView } from "./components/BarManagementView";
-import { CoffeeBarHeader } from "./components/CoffeeBarHeader";
-import { CycleView } from "./components/CycleView";
-import { LeaderboardView } from "./components/LeaderboardView";
-import { useCoffeeBarClient } from "./useCoffeeBarClient";
+import pageStyles from "@/app/coffee-bars/[code]/CoffeeBarPage.module.css";
+import { BarManagementView } from "@/app/coffee-bars/[code]/_components/BarManagementView";
+import { CoffeeBarHeader } from "@/app/coffee-bars/[code]/_components/CoffeeBarHeader";
+import { CycleView } from "@/app/coffee-bars/[code]/_components/CycleView";
+import { LeaderboardView } from "@/app/coffee-bars/[code]/_components/LeaderboardView";
+import { useCoffeeBarClient } from "@/app/coffee-bars/[code]/useCoffeeBarClient";
 
 type CoffeeBarClientProps = {
   code: string;
@@ -88,7 +88,6 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
           isActive={state.activeView === "leaderboard"}
         />
       )}
-
     </div>
   );
 }

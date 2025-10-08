@@ -1,9 +1,12 @@
-import { type HipsterIdentity } from "../../../lib/identity";
-import sharedStyles from "../CoffeeBarShared.module.css";
-import styles from "../CycleView.module.css";
-import type { CoffeeBarResource, SessionStateResource } from "../types";
-import type { UseCoffeeBarClientResult } from "../useCoffeeBarClient";
-import { YouTubeEmbed } from "./YouTubeEmbed";
+import { type HipsterIdentity } from "@/lib/identity";
+import sharedStyles from "@/app/coffee-bars/[code]/CoffeeBarShared.module.css";
+import styles from "@/app/coffee-bars/[code]/_components/CycleView.module.css";
+import type {
+  CoffeeBarResource,
+  SessionStateResource,
+} from "@/app/coffee-bars/[code]/types";
+import type { UseCoffeeBarClientResult } from "@/app/coffee-bars/[code]/useCoffeeBarClient";
+import { YouTubeEmbed } from "@/app/coffee-bars/[code]/_components/YouTubeEmbed";
 
 type CycleViewProps = {
   coffeeBar: CoffeeBarResource;
@@ -33,7 +36,11 @@ export function CycleView({
   return (
     <div className={styles.cycleView}>
       <div className={styles.cycleToolbar}>
-        <button type="button" className={sharedStyles.linkButton} onClick={onBackToBar}>
+        <button
+          type="button"
+          className={sharedStyles.linkButton}
+          onClick={onBackToBar}
+        >
           ← Back to bar management
         </button>
         <div className={styles.cycleToolbarStatus}>{session.statusMessage}</div>
@@ -48,30 +55,45 @@ export function CycleView({
                 {isClient ? (
                   <YouTubeEmbed
                     videoId={session.cycleForPlayer.videoId}
-                    title={session.cycleForPlayer.videoTitle ?? "Coffee Talk Video"}
+                    title={
+                      session.cycleForPlayer.videoTitle ?? "Coffee Talk Video"
+                    }
                     className={styles.player}
                   />
                 ) : (
-                  <div className={styles.playerPlaceholder}>Loading the player…</div>
+                  <div className={styles.playerPlaceholder}>
+                    Loading the player…
+                  </div>
                 )}
               </div>
               {session.cycleForPlayer.videoTitle && (
-                <div className={styles.videoTitle}>{session.cycleForPlayer.videoTitle}</div>
+                <div className={styles.videoTitle}>
+                  {session.cycleForPlayer.videoTitle}
+                </div>
               )}
             </div>
 
             <aside className={styles.voteSidebar}>
               <div className={styles.sidebarSection}>
                 <div className={styles.sidebarHeading}>Cycle controls</div>
-                <p className={sharedStyles.sessionStatus}>{session.statusMessage}</p>
+                <p className={sharedStyles.sessionStatus}>
+                  {session.statusMessage}
+                </p>
                 <div className={styles.cycleButtons}>
                   <button
                     type="button"
                     className={`${sharedStyles.primaryButton} ${sharedStyles.cycleAction}`}
                     onClick={cycle.handleReveal}
-                    disabled={!hasIdentity || !session.activeCycle || cycle.revealLoading || !session.hasActiveSession}
+                    disabled={
+                      !hasIdentity ||
+                      !session.activeCycle ||
+                      cycle.revealLoading ||
+                      !session.hasActiveSession
+                    }
                   >
-                    {cycle.revealLoading ? "Revealing…" : "Close voting & reveal"}
+                    {cycle.revealLoading
+                      ? "Revealing…"
+                      : "Close voting & reveal"}
                   </button>
                   <button
                     type="button"
@@ -96,8 +118,8 @@ export function CycleView({
                   {session.activeCycle
                     ? `Votes: ${cycle.votesCast}/${cycle.totalVotesNeeded}`
                     : session.hasActiveSession
-                      ? "Voting is closed for this video."
-                      : "Session is not active."}
+                    ? "Voting is closed for this video."
+                    : "Session is not active."}
                 </div>
                 {cycle.displayReveal ? (
                   <>
@@ -105,14 +127,21 @@ export function CycleView({
                       <div>
                         <strong>Curator:</strong>{" "}
                         {cycle.displayReveal.correctSubmitterIds
-                          .map((hipsterId) => cycle.hipsterNameById.get(hipsterId) ?? "Unknown")
+                          .map(
+                            (hipsterId) =>
+                              cycle.hipsterNameById.get(hipsterId) ?? "Unknown"
+                          )
                           .join(", ")}
                       </div>
                       <div>
                         <strong>Correct guessers:</strong>{" "}
                         {cycle.displayReveal.correctGuessers.length > 0
                           ? cycle.displayReveal.correctGuessers
-                              .map((hipsterId) => cycle.hipsterNameById.get(hipsterId) ?? "Unknown")
+                              .map(
+                                (hipsterId) =>
+                                  cycle.hipsterNameById.get(hipsterId) ??
+                                  "Unknown"
+                              )
                               .join(", ")
                           : "No one guessed it this time."}
                       </div>
@@ -122,7 +151,10 @@ export function CycleView({
                         .sort(([, a], [, b]) => b - a)
                         .map(([hipsterId, votes]) => (
                           <li key={hipsterId} className={styles.tallyRow}>
-                            <span>{cycle.hipsterNameById.get(hipsterId) ?? "Unknown"}</span>
+                            <span>
+                              {cycle.hipsterNameById.get(hipsterId) ??
+                                "Unknown"}
+                            </span>
                             <span className={styles.tallyCount}>{votes}</span>
                           </li>
                         ))}
@@ -137,7 +169,9 @@ export function CycleView({
                             type="button"
                             className={styles.voteButton}
                             disabled={
-                              hipster.id === identity?.hipsterId || cycle.alreadyVoted || cycle.revealLoading
+                              hipster.id === identity?.hipsterId ||
+                              cycle.alreadyVoted ||
+                              cycle.revealLoading
                             }
                             onClick={() => cycle.handleVote(hipster.id)}
                           >
@@ -147,23 +181,42 @@ export function CycleView({
                       ))}
                     </ul>
                   ) : session.hasActiveSession ? (
-                    <p className={sharedStyles.sessionHint}>Voting will resume on the next video.</p>
+                    <p className={sharedStyles.sessionHint}>
+                      Voting will resume on the next video.
+                    </p>
                   ) : (
-                    <p className={sharedStyles.sessionHint}>Start a new session to vote again.</p>
+                    <p className={sharedStyles.sessionHint}>
+                      Start a new session to vote again.
+                    </p>
                   )
                 ) : (
-                  <p className={sharedStyles.sessionHint}>Join the bar to cast your vote.</p>
+                  <p className={sharedStyles.sessionHint}>
+                    Join the bar to cast your vote.
+                  </p>
                 )}
               </div>
 
               <div className={styles.sidebarSection}>
                 <div className={styles.sidebarHeading}>Hipsters in the bar</div>
                 <ul className={styles.sidebarHipsterList}>
-                  {coffeeBar.hipsters.length === 0 && <li>No hipsters yet. Be the first to join!</li>}
+                  {coffeeBar.hipsters.length === 0 && (
+                    <li>No hipsters yet. Be the first to join!</li>
+                  )}
                   {coffeeBar.hipsters.map((hipster) => (
-                    <li key={hipster.id} className={identity?.hipsterId === hipster.id ? sharedStyles.me : undefined}>
-                      <span className={sharedStyles.hipsterName}>{hipster.username}</span>
-                      <span className={sharedStyles.hipsterCount}>{submissionCounts[hipster.id] ?? 0} urls</span>
+                    <li
+                      key={hipster.id}
+                      className={
+                        identity?.hipsterId === hipster.id
+                          ? sharedStyles.me
+                          : undefined
+                      }
+                    >
+                      <span className={sharedStyles.hipsterName}>
+                        {hipster.username}
+                      </span>
+                      <span className={sharedStyles.hipsterCount}>
+                        {submissionCounts[hipster.id] ?? 0} urls
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -171,11 +224,15 @@ export function CycleView({
             </aside>
           </div>
         ) : (
-          <p className={sharedStyles.sessionHint}>Start a session to spin up the first video.</p>
+          <p className={sharedStyles.sessionHint}>
+            Start a session to spin up the first video.
+          </p>
         )}
       </section>
 
-      {cycle.voteError && <div className={sharedStyles.inlineError}>{cycle.voteError}</div>}
+      {cycle.voteError && (
+        <div className={sharedStyles.inlineError}>{cycle.voteError}</div>
+      )}
     </div>
   );
 }

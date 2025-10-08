@@ -1,6 +1,6 @@
-import styles from "./page.module.css";
-import { CreateCoffeeBarForm } from "./components/CreateCoffeeBarForm";
-import { JoinCoffeeBarForm } from "./components/JoinCoffeeBarForm";
+import styles from "@/app/page.module.css";
+import { CreateCoffeeBarForm } from "@/components/CreateCoffeeBarForm";
+import { JoinCoffeeBarForm } from "@/components/JoinCoffeeBarForm";
 
 export default function Home() {
   return (

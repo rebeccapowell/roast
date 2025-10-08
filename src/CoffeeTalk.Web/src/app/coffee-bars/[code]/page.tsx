@@ -1,4 +1,4 @@
-import { CoffeeBarClient } from "./CoffeeBarClient";
+import { CoffeeBarClient } from "@/app/coffee-bars/[code]/CoffeeBarClient";
 
 type CoffeeBarPageProps = {
   params: Promise<{ code: string }>;

@@ -1,7 +1,10 @@
-import { type HipsterIdentity } from "../../../lib/identity";
-import sharedStyles from "../CoffeeBarShared.module.css";
-import styles from "../LeaderboardView.module.css";
-import { OVERALL_LEADERBOARD, type UseCoffeeBarClientResult } from "../useCoffeeBarClient";
+import { type HipsterIdentity } from "@/lib/identity";
+import sharedStyles from "@/app/coffee-bars/[code]/CoffeeBarShared.module.css";
+import styles from "@/app/coffee-bars/[code]/_components/LeaderboardView.module.css";
+import {
+  OVERALL_LEADERBOARD,
+  type UseCoffeeBarClientResult,
+} from "@/app/coffee-bars/[code]/useCoffeeBarClient";
 
 type LeaderboardViewProps = {
   identity: HipsterIdentity | null;
@@ -9,8 +12,14 @@ type LeaderboardViewProps = {
   isActive: boolean;
 };
 
-export function LeaderboardView({ identity, leaderboard, isActive }: LeaderboardViewProps) {
-  const renderTrendIndicator = (entry: (typeof leaderboard.displayedEntries)[number]) => {
+export function LeaderboardView({
+  identity,
+  leaderboard,
+  isActive,
+}: LeaderboardViewProps) {
+  const renderTrendIndicator = (
+    entry: (typeof leaderboard.displayedEntries)[number]
+  ) => {
     if (!leaderboard.showTrendColumn) {
       return "—";
     }
@@ -21,9 +30,15 @@ export function LeaderboardView({ identity, leaderboard, isActive }: Leaderboard
 
     if (entry.trend === "up") {
       const delta = entry.previousRank - entry.rank;
-      const title = delta === 1 ? "Up 1 place since last cycle" : `Up ${delta} places since last cycle`;
+      const title =
+        delta === 1
+          ? "Up 1 place since last cycle"
+          : `Up ${delta} places since last cycle`;
       return (
-        <span className={`${styles.leaderboardTrendIndicator} ${styles.leaderboardTrendUp}`} title={title}>
+        <span
+          className={`${styles.leaderboardTrendIndicator} ${styles.leaderboardTrendUp}`}
+          title={title}
+        >
           ↑{delta}
         </span>
       );
@@ -31,16 +46,25 @@ export function LeaderboardView({ identity, leaderboard, isActive }: Leaderboard
 
     if (entry.trend === "down") {
       const delta = entry.rank - entry.previousRank;
-      const title = delta === 1 ? "Down 1 place since last cycle" : `Down ${delta} places since last cycle`;
+      const title =
+        delta === 1
+          ? "Down 1 place since last cycle"
+          : `Down ${delta} places since last cycle`;
       return (
-        <span className={`${styles.leaderboardTrendIndicator} ${styles.leaderboardTrendDown}`} title={title}>
+        <span
+          className={`${styles.leaderboardTrendIndicator} ${styles.leaderboardTrendDown}`}
+          title={title}
+        >
           ↓{delta}
         </span>
       );
     }
 
     return (
-      <span className={styles.leaderboardTrendIndicator} title="No change since last cycle">
+      <span
+        className={styles.leaderboardTrendIndicator}
+        title="No change since last cycle"
+      >
         →
       </span>
     );
@@ -53,7 +77,8 @@ export function LeaderboardView({ identity, leaderboard, isActive }: Leaderboard
           <div>
             <h2 className={sharedStyles.cardTitle}>Leaderboard</h2>
             <p className={styles.leaderboardHint}>
-              Track the sharpest guessers across this bar or drill into a single session.
+              Track the sharpest guessers across this bar or drill into a single
+              session.
             </p>
           </div>
           <div className={styles.leaderboardControls}>
@@ -64,9 +89,13 @@ export function LeaderboardView({ identity, leaderboard, isActive }: Leaderboard
                 value={leaderboard.selectedSessionId}
                 onChange={leaderboard.handleSessionChange}
               >
-                <option value={OVERALL_LEADERBOARD}>Overall (all sessions)</option>
+                <option value={OVERALL_LEADERBOARD}>
+                  Overall (all sessions)
+                </option>
                 {leaderboard.sortedSessions.map((session) => {
-                  const startedAt = new Date(session.startedAt).toLocaleString();
+                  const startedAt = new Date(
+                    session.startedAt
+                  ).toLocaleString();
                   const status = session.endedAt ? "ended" : "active";
                   return (
                     <option key={session.sessionId} value={session.sessionId}>
@@ -86,12 +115,17 @@ export function LeaderboardView({ identity, leaderboard, isActive }: Leaderboard
             </button>
           </div>
         </div>
-        {leaderboard.error ? <div className={sharedStyles.inlineError}>{leaderboard.error}</div> : null}
+        {leaderboard.error ? (
+          <div className={sharedStyles.inlineError}>{leaderboard.error}</div>
+        ) : null}
         {isActive && leaderboard.loading && !leaderboard.leaderboard ? (
           <div className={styles.leaderboardStatus}>Loading standings…</div>
         ) : null}
-        {leaderboard.myTrendMessage && leaderboard.selectedSessionId === OVERALL_LEADERBOARD ? (
-          <p className={styles.leaderboardTrend}>{leaderboard.myTrendMessage}</p>
+        {leaderboard.myTrendMessage &&
+        leaderboard.selectedSessionId === OVERALL_LEADERBOARD ? (
+          <p className={styles.leaderboardTrend}>
+            {leaderboard.myTrendMessage}
+          </p>
         ) : null}
         <div className={styles.leaderboardTableWrapper}>
           <table className={styles.leaderboardTable}>
@@ -117,20 +151,33 @@ export function LeaderboardView({ identity, leaderboard, isActive }: Leaderboard
                 return (
                   <tr key={entry.hipsterId} className={rowClassName}>
                     <td className={styles.leaderboardRankCell}>{entry.rank}</td>
-                    <td className={styles.leaderboardNameCell}>{entry.username}</td>
-                    <td className={styles.leaderboardTrendCell}>{renderTrendIndicator(entry)}</td>
-                    <td className={styles.leaderboardScoreCell}>{entry.score}</td>
+                    <td className={styles.leaderboardNameCell}>
+                      {entry.username}
+                    </td>
+                    <td className={styles.leaderboardTrendCell}>
+                      {renderTrendIndicator(entry)}
+                    </td>
+                    <td className={styles.leaderboardScoreCell}>
+                      {entry.score}
+                    </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
-        {leaderboard.displayedEntries.length === 0 && !leaderboard.loading && !leaderboard.error ? (
-          <div className={styles.leaderboardStatus}>No standings yet. Reveal a cycle to see points.</div>
+        {leaderboard.displayedEntries.length === 0 &&
+        !leaderboard.loading &&
+        !leaderboard.error ? (
+          <div className={styles.leaderboardStatus}>
+            No standings yet. Reveal a cycle to see points.
+          </div>
         ) : null}
-        {leaderboard.selectedSessionSummary && leaderboard.selectedSessionId !== OVERALL_LEADERBOARD ? (
-          <p className={styles.leaderboardSessionMeta}>{leaderboard.selectedSessionSummary}</p>
+        {leaderboard.selectedSessionSummary &&
+        leaderboard.selectedSessionId !== OVERALL_LEADERBOARD ? (
+          <p className={styles.leaderboardSessionMeta}>
+            {leaderboard.selectedSessionSummary}
+          </p>
         ) : null}
       </section>
     </div>

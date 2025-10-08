@@ -1,8 +1,8 @@
-import type { SubmissionPolicy } from "../types";
-import type { ActiveView } from "../useCoffeeBarClient";
-import pageStyles from "../CoffeeBarPage.module.css";
-import sharedStyles from "../CoffeeBarShared.module.css";
-import { ViewSwitcher } from "./ViewSwitcher";
+import type { SubmissionPolicy } from "@/app/coffee-bars/[code]/types";
+import type { ActiveView } from "@/app/coffee-bars/[code]/useCoffeeBarClient";
+import pageStyles from "@/app/coffee-bars/[code]/CoffeeBarPage.module.css";
+import sharedStyles from "@/app/coffee-bars/[code]/CoffeeBarShared.module.css";
+import { ViewSwitcher } from "@/app/coffee-bars/[code]/_components/ViewSwitcher";
 
 type CoffeeBarHeaderProps = {
   code: string;
@@ -23,7 +23,10 @@ export function CoffeeBarHeader({
   activeView,
   onChangeView,
 }: CoffeeBarHeaderProps) {
-  const policyLabel = submissionPolicy === "LockOnFirstBrew" ? "Lock on first brew" : "Always open";
+  const policyLabel =
+    submissionPolicy === "LockOnFirstBrew"
+      ? "Lock on first brew"
+      : "Always open";
 
   return (
     <header className={pageStyles.header}>
@@ -44,7 +47,8 @@ export function CoffeeBarHeader({
         </p>
         <p className={pageStyles.policy}>
           Policy: <strong>{policyLabel}</strong>
-          {" · "}Max ingredients per hipster: <strong>{maxIngredientsPerHipster}</strong>
+          {" · "}Max ingredients per hipster:{" "}
+          <strong>{maxIngredientsPerHipster}</strong>
         </p>
         <ViewSwitcher activeView={activeView} onChange={onChangeView} />
       </div>

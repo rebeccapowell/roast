@@ -1,8 +1,8 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import styles from "../page.module.css";
-import { saveIdentity } from "../lib/identity";
+import styles from "@/app/page.module.css";
+import { saveIdentity } from "@/lib/identity";
 
 type SubmissionPolicy = "LockOnFirstBrew" | "AlwaysOpen";
 
@@ -44,7 +44,10 @@ type CreateCoffeeBarResponse = {
   hipster: HipsterResource;
 };
 
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/$/, "");
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(
+  /\/$/,
+  ""
+);
 const DEFAULT_QUOTA = 5;
 
 export function CreateCoffeeBarForm() {
@@ -67,7 +70,8 @@ export function CreateCoffeeBarForm() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const quota = maxPerHipster.trim() === "" ? undefined : Number(maxPerHipster);
+    const quota =
+      maxPerHipster.trim() === "" ? undefined : Number(maxPerHipster);
     if (quota !== undefined && (Number.isNaN(quota) || quota < 1)) {
       setError("Please enter a valid max ingredients value (minimum 1).");
       return;
@@ -91,7 +95,10 @@ export function CreateCoffeeBarForm() {
 
       const payload = await response.json();
       if (!response.ok) {
-        setError((payload && (payload.detail ?? payload.title)) || "We couldn't create the coffee bar.");
+        setError(
+          (payload && (payload.detail ?? payload.title)) ||
+            "We couldn't create the coffee bar."
+        );
         return;
       }
 
@@ -108,7 +115,9 @@ export function CreateCoffeeBarForm() {
       setUsername("");
     } catch (err) {
       console.error(err);
-      setError("Something went wrong while creating your coffee bar. Please try again.");
+      setError(
+        "Something went wrong while creating your coffee bar. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -118,7 +127,8 @@ export function CreateCoffeeBarForm() {
     <section className={styles.card}>
       <h2 className={styles.cardTitle}>Create a Coffee Bar</h2>
       <p className={styles.cardSubtitle}>
-        Spin up a fresh bar with a shareable code. Everyone can submit their favourite clips once you hand out the code.
+        Spin up a fresh bar with a shareable code. Everyone can submit their
+        favourite clips once you hand out the code.
       </p>
       <form className={styles.form} onSubmit={handleSubmit}>
         <div className={styles.fieldGroup}>
@@ -161,7 +171,9 @@ export function CreateCoffeeBarForm() {
             name="submissionPolicy"
             className={styles.select}
             value={policy}
-            onChange={(event) => setPolicy(event.target.value as SubmissionPolicy)}
+            onChange={(event) =>
+              setPolicy(event.target.value as SubmissionPolicy)
+            }
             disabled={loading}
           >
             <option value="LockOnFirstBrew">Lock on first brew</option>
@@ -185,7 +197,11 @@ export function CreateCoffeeBarForm() {
             disabled={loading}
           />
         </div>
-        <button className={styles.submitButton} type="submit" disabled={loading}>
+        <button
+          className={styles.submitButton}
+          type="submit"
+          disabled={loading}
+        >
           {loading ? "Crafting..." : "Create bar"}
         </button>
       </form>
@@ -197,15 +213,22 @@ export function CreateCoffeeBarForm() {
             Theme: <strong>{result.coffeeBar.theme}</strong>
           </div>
           <div>
-            Submissions: up to {result.coffeeBar.defaultMaxIngredientsPerHipster} per hipster · policy {result.coffeeBar.submissionPolicy}
+            Submissions: up to{" "}
+            {result.coffeeBar.defaultMaxIngredientsPerHipster} per hipster ·
+            policy {result.coffeeBar.submissionPolicy}
           </div>
           {shareLink && (
             <div className={styles.shareLink}>
-              Share this link with your crew: <a className={styles.shareAnchor} href={shareLink}>{shareLink}</a>
+              Share this link with your crew:{" "}
+              <a className={styles.shareAnchor} href={shareLink}>
+                {shareLink}
+              </a>
             </div>
           )}
           <div className={styles.identityHint}>
-            You’re in! We saved your handle (<strong>{result.hipster.username}</strong>) so you can dive back into the bar instantly.
+            You’re in! We saved your handle (
+            <strong>{result.hipster.username}</strong>) so you can dive back
+            into the bar instantly.
           </div>
         </div>
       )}
