@@ -1,4 +1,3 @@
-using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using CoffeeTalk.Api.Endpoints;
@@ -7,9 +6,7 @@ using CoffeeTalk.Api.Services;
 using CoffeeTalk.Domain.CoffeeBars;
 using CoffeeTalk.Infrastructure.Data;
 using CoffeeTalk.Infrastructure.Data.Repositories;
-using Microsoft.AspNetCore.Http.Json;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -67,6 +64,16 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
+    using (var scope = app.Services.CreateScope())
+    {
+        var seeder = new DataSeeder(
+            scope.ServiceProvider.GetRequiredService<CoffeeTalkDbContext>(),
+            scope.ServiceProvider.GetRequiredService<ICoffeeBarRepository>(),
+            true);
+
+        await seeder.SeedAsync();
+    }
+
     app.UseSwagger();
     app.UseSwaggerUI();
 }
@@ -78,4 +85,4 @@ app.MapCoffeeBarEndpoints();
 app.MapBrewSessionEndpoints();
 app.MapHub<CoffeeBarHub>("/hubs/coffee-bar");
 
-app.Run();
+await app.RunAsync();
