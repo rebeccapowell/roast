@@ -1,8 +1,15 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
-var postgres = builder.AddPostgres("postgres");
+var postgres = builder.AddPostgres("postgres")
+    .WithVolume("pgdata", "/var/lib/postgresql/data");
 
 var coffeeTalkDb = postgres.AddDatabase("coffeetalkdb");
+
+builder.AddContainer("pgadmin", "dpage/pgadmin4:latest")
+    .WithHttpEndpoint(targetPort: 80, name: "http", port: 5050)
+    .WithEnvironment("PGADMIN_DEFAULT_EMAIL", "admin@example.com")
+    .WithEnvironment("PGADMIN_DEFAULT_PASSWORD", "admin")
+    .WithReference(postgres);
 
 var migrations = builder.AddProject<Projects.CoffeeTalk_Migrations>("coffeetalk-migrator")
     .WithReference(coffeeTalkDb)
