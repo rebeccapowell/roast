@@ -899,6 +899,11 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
       return;
     }
 
+    if (!hasActiveSession) {
+      setActiveView("bar");
+      return;
+    }
+
     if (!latestCycle) {
       return;
     }
@@ -908,7 +913,7 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
       setRevealResult(null);
       setActiveView("cycle");
     }
-  }, [sessionState, latestCycle, lastCycleId]);
+  }, [sessionState, latestCycle, lastCycleId, hasActiveSession]);
 
   const handleStartSession = useCallback(async () => {
     if (!coffeeBar || hasActiveSession) {
