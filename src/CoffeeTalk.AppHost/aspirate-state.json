@@ -1,0 +1,21 @@
+{
+  "projectPath": ".",
+  "outputPath": "aspirate-output",
+  "containerRegistry": "acr",
+  "containerImageTags": [
+    "latest"
+  ],
+  "containerBuilder": "docker",
+  "outputFormat": "kustomize",
+  "privateRegistryEmail": "aspir8@aka.ms",
+  "includeDashboard": true,
+  "secrets": {
+    "salt": "F\u002BhSguKXW84KXpGG",
+    "hash": "hpIkHrl2XkhJSIVDvFkNC6So9h8TOGmVLeHbqouo4PU=",
+    "secrets": {
+      "postgres-password": {
+        "value": "F\u002BhSguKXW84KXpGGDqhgz0a6fLrY6OmrcwapcizkhHigXUtDaN0BV5ZGR123b6fw22I="
+      }
+    }
+  }
+}
