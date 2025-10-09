@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using Aspire.Hosting;
-using Aspire.Hosting.ApplicationModel;
+using CoffeeTalk.AppHost.Extensions;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -36,15 +36,22 @@ var web = builder.AddProject<Projects.CoffeeTalk_Web>("web")
 
 var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
 var e2eProjectDir = Path.Combine(repoRoot, "tests", "CoffeeTalk.E2E");
+var playwrightArgs = new[]
+{
+    "test",
+    "CoffeeTalk.E2E.csproj",
+    "--logger",
+    "trx",
+};
 
-var e2e = builder.AddExecutable("e2e", "dotnet", e2eProjectDir,
-        "test",
-        "CoffeeTalk.E2E.csproj",
-        "--logger",
-        "trx")
+builder.AddExecutable("playwright", "dotnet", e2eProjectDir, playwrightArgs)
     .WithEnvironment("WEB_BASE_URL", web.GetEndpoint("http").Url)
+    .WithEnvironment("ASPIRE", "true")
     .WithReference(web)
     .WithReference(api)
-    .WithAnnotation(new ExplicitStartupAnnotation());
+    .WithExplicitStart()
+    .WithPlaywrightRepeatCommand(playwrightArgs)
+    .ExcludeFromManifest()
+    .WithParentRelationship(web);
 
 await builder.Build().RunAsync();

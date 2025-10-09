@@ -42,4 +42,4 @@ jobs:
           pwsh bin/Debug/net9.0/playwright.ps1 install --with-deps
 
       - name: Trigger E2E via Aspire CLI
-        run: aspire run e2e --project src/CoffeeTalk.AppHost/CoffeeTalk.AppHost.csproj
+        run: aspire run playwright --project src/CoffeeTalk.AppHost/CoffeeTalk.AppHost.csproj
