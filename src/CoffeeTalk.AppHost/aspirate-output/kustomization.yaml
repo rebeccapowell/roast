@@ -1,0 +1,10 @@
+resources:
+- postgres
+- coffeetalk-migrator
+- coffeetalk-api
+- dashboard.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+

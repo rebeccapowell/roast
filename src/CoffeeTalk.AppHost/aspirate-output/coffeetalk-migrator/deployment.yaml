@@ -1,0 +1,30 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coffeetalk-migrator
+  labels:
+    app: coffeetalk-migrator
+spec:
+  minReadySeconds: 60
+  replicas: 1
+  selector:
+    matchLabels:
+      app: coffeetalk-migrator
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: coffeetalk-migrator
+    spec:
+      containers:
+      - name: coffeetalk-migrator
+        image: lbhackweekroast2025.azurecr.io/coffeetalk-migrator:latest
+        imagePullPolicy: IfNotPresent
+        envFrom:
+        - configMapRef:
+            name: coffeetalk-migrator-env
+        - secretRef:
+            name: coffeetalk-migrator-secrets
+      terminationGracePeriodSeconds: 180

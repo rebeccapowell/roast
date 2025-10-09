@@ -1,20 +1,32 @@
 {
   "projectPath": ".",
   "outputPath": "aspirate-output",
-  "containerRegistry": "acr",
+  "containerRegistry": "lbhackweekroast2025.azurecr.io",
   "containerImageTags": [
     "latest"
   ],
   "containerBuilder": "docker",
   "outputFormat": "kustomize",
+  "skipFinalKustomizeGeneration": false,
   "privateRegistryEmail": "aspir8@aka.ms",
   "includeDashboard": true,
+  "useCustomNamespace": false,
   "secrets": {
     "salt": "F\u002BhSguKXW84KXpGG",
     "hash": "hpIkHrl2XkhJSIVDvFkNC6So9h8TOGmVLeHbqouo4PU=",
     "secrets": {
       "postgres-password": {
         "value": "F\u002BhSguKXW84KXpGGDqhgz0a6fLrY6OmrcwapcizkhHigXUtDaN0BV5ZGR123b6fw22I="
+      },
+      "postgres": {
+        "POSTGRES_PASSWORD": "F\u002BhSguKXW84KXpGGDqhgz0a6fLrY6OmrcwapcizkhHigXUtDaN0BV5ZGR123b6fw22I="
+      },
+      "coffeetalkdb": {},
+      "coffeetalk-migrator": {
+        "ConnectionStrings__coffeetalkdb": "F\u002BhSguKXW84KXpGGXTCzBusAaggrSClyBTUQkT3Zv07JHgVmbtwmZ68TcXSrfK\u002BrtgjQCBQIKHJmtXFsYEVs/eiFgVuAWSCnPVo9IJ2gfhfBJDjIwnU/YK2fJxDs\u002BPiqZXSOQpFhxu5hBHeT7rIhHtnut1w0ZiK7w1Eb"
+      },
+      "coffeetalk-api": {
+        "ConnectionStrings__coffeetalkdb": "F\u002BhSguKXW84KXpGGXTCzBusAaggrSClyBTUQkT3Zv07JHgVmbtwmZ68TcXSrfK\u002BrtgjQCBQIKHJmtXFsYEVs/eiFgVuAWSCnPVo9IJ2gfhfBJDjIwnU/YK2fJxDs\u002BPiqZXSOQpFhxu5hBHeT7rIhHtnut1w0ZiK7w1Eb"
       }
     }
   }

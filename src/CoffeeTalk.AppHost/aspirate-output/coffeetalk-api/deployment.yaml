@@ -1,0 +1,35 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coffeetalk-api
+  labels:
+    app: coffeetalk-api
+spec:
+  minReadySeconds: 60
+  replicas: 1
+  selector:
+    matchLabels:
+      app: coffeetalk-api
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: coffeetalk-api
+    spec:
+      containers:
+      - name: coffeetalk-api
+        image: lbhackweekroast2025.azurecr.io/coffeetalk-api:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8080
+        - name: https
+          containerPort: 8443
+        envFrom:
+        - configMapRef:
+            name: coffeetalk-api-env
+        - secretRef:
+            name: coffeetalk-api-secrets
+      terminationGracePeriodSeconds: 180
