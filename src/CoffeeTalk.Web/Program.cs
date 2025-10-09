@@ -12,7 +12,9 @@ Console.CancelKeyPress += (_, args) =>
 var workingDirectory = ResolveProjectDirectory();
 await EnsureDependenciesAsync(workingDirectory, cts.Token);
 
-var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
+var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+    ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
+    ?? "Development";
 var script = string.Equals(environment, "Development", StringComparison.OrdinalIgnoreCase) ? "dev" : "start";
 
 if (!string.Equals(script, "dev", StringComparison.OrdinalIgnoreCase))
