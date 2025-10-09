@@ -1,4 +1,5 @@
 using CoffeeTalk.Infrastructure.Data;
+using CoffeeTalk.Migrations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,16 +20,3 @@ builder.Services.AddDbContext<CoffeeTalkDbContext>(options =>
 using var host = builder.Build();
 
 await host.RunMigrationAsync<CoffeeTalkDbContext>();
-
-internal static class MigrationHostExtensions
-{
-    public static async Task RunMigrationAsync<TContext>(this IHost host)
-        where TContext : DbContext
-    {
-        ArgumentNullException.ThrowIfNull(host);
-
-        using var scope = host.Services.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<TContext>();
-        await context.Database.MigrateAsync();
-    }
-}

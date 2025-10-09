@@ -8,18 +8,16 @@ public sealed class DataSeeder
 {
     private readonly CoffeeTalkDbContext _context;
     private readonly ICoffeeBarRepository _repository;
-    private readonly bool _resetOnStartup;
 
-    public DataSeeder(CoffeeTalkDbContext context, ICoffeeBarRepository repository, bool resetOnStartup)
+    public DataSeeder(CoffeeTalkDbContext context, ICoffeeBarRepository repository)
     {
         _context = context;
         _repository = repository;
-        _resetOnStartup = resetOnStartup;
     }
 
-    public async Task SeedAsync()
+    public async Task SeedAsync(bool resetOnStartup)
     {
-        if (_resetOnStartup)
+        if (resetOnStartup)
         {
             _context.CoffeeBars.RemoveRange(_context.CoffeeBars);
             await _context.SaveChangesAsync();
