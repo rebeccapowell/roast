@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Diagnostics;
 using System.IO;
 
@@ -76,6 +77,8 @@ static Process CreateProcess(string command, IEnumerable<string> args, string wo
     EnableRaisingEvents = true,
   };
 
+  ApplyEnvironmentVariables(process.StartInfo);
+
   foreach (var arg in args)
   {
     process.StartInfo.ArgumentList.Add(arg);
@@ -103,6 +106,17 @@ static Process CreateProcess(string command, IEnumerable<string> args, string wo
 static string ResolveCommand(string command)
 {
   return OperatingSystem.IsWindows() ? $"{command}.cmd" : command;
+}
+
+static void ApplyEnvironmentVariables(ProcessStartInfo startInfo)
+{
+  foreach (DictionaryEntry entry in Environment.GetEnvironmentVariables())
+  {
+    if (entry.Key is string key && entry.Value is string value)
+    {
+      startInfo.Environment[key] = value;
+    }
+  }
 }
 
 static string ResolveProjectDirectory()
