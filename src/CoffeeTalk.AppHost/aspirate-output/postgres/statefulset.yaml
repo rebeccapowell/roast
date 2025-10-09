@@ -28,7 +28,7 @@ spec:
       containers:
         - name: postgres
           image: docker.io/library/postgres:17.6
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 5432
           envFrom:

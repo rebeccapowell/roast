@@ -9,3 +9,4 @@ configMapGenerator:
 - name: coffeetalk-web-env
   literals:
     - HTTP_PORTS=3000
+    - NEXT_PUBLIC_API_BASE_URL=/api

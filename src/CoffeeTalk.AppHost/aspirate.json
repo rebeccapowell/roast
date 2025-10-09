@@ -7,7 +7,9 @@
       "latest"
     ],
     "Builder": "docker",
-    "BuildArgs": null,
+    "BuildArgs": [
+      "--platform linux/amd64"
+    ],
     "Context": null
   }
 }

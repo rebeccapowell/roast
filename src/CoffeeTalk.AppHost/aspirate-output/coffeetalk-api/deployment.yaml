@@ -32,7 +32,7 @@ spec:
       containers:
       - name: coffeetalk-api
         image: lbhackweekroast2025.azurecr.io/coffeetalk-api:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - name: http
           containerPort: 8080

@@ -32,7 +32,7 @@ spec:
       containers:
       - name: coffeetalk-migrator
         image: lbhackweekroast2025.azurecr.io/coffeetalk-migrator:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         envFrom:
         - configMapRef:
             name: coffeetalk-migrator-env
