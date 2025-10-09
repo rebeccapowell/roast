@@ -1,7 +1,4 @@
-using System;
-using System.IO;
 using Aspire.Hosting;
-using CoffeeTalk.AppHost.Extensions;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -26,30 +23,10 @@ var api = builder.AddProject<Projects.CoffeeTalk_Api>("api")
     .WithReference(coffeeTalkDb)
     .WaitForCompletion(migrations);
 
-var web = builder.AddProject<Projects.CoffeeTalk_Web>("web")
+builder.AddProject<Projects.CoffeeTalk_Web>("web")
     .WithHttpEndpoint(env: "PORT", port: 3000)
     .WithReference(api)
     .WithEnvironment("API_URL", api.GetEndpoint("http"))
     .WithEnvironment("NEXT_PUBLIC_API_BASE_URL", api.GetEndpoint("http"));
-
-var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
-var e2eProjectDir = Path.Combine(repoRoot, "tests", "CoffeeTalk.E2E");
-var playwrightArgs = new[]
-{
-    "test",
-    "CoffeeTalk.E2E.csproj",
-    "--logger",
-    "trx",
-};
-
-builder.AddExecutable("playwright", "dotnet", e2eProjectDir, playwrightArgs)
-    .WithEnvironment("WEB_BASE_URL", web.GetEndpoint("http").Url.ToString())
-    .WithEnvironment("ASPIRE", "true")
-    .WithReference(web)
-    .WithReference(api)
-    .WithExplicitStart()
-    .WithPlaywrightRepeatCommand(playwrightArgs)
-    .ExcludeFromManifest()
-    .WithParentRelationship(web);
 
 await builder.Build().RunAsync();
