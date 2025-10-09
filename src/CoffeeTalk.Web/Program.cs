@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 
 var cts = new CancellationTokenSource();
 Console.CancelKeyPress += (_, args) =>
@@ -7,7 +8,7 @@ Console.CancelKeyPress += (_, args) =>
   cts.Cancel();
 };
 
-var workingDirectory = Directory.GetCurrentDirectory();
+var workingDirectory = ResolveProjectDirectory();
 await EnsureDependenciesAsync(workingDirectory, cts.Token);
 
 var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
@@ -102,4 +103,22 @@ static Process CreateProcess(string command, IEnumerable<string> args, string wo
 static string ResolveCommand(string command)
 {
   return OperatingSystem.IsWindows() ? $"{command}.cmd" : command;
+}
+
+static string ResolveProjectDirectory()
+{
+  var current = AppContext.BaseDirectory;
+
+  while (!string.IsNullOrEmpty(current))
+  {
+    if (File.Exists(Path.Combine(current, "package.json")))
+    {
+      return current;
+    }
+
+    var parent = Directory.GetParent(current);
+    current = parent?.FullName ?? string.Empty;
+  }
+
+  throw new InvalidOperationException("Failed to locate the CoffeeTalk.Web project directory.");
 }

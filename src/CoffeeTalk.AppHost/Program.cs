@@ -29,9 +29,8 @@ var api = builder.AddProject<Projects.CoffeeTalk_Api>("api")
 var web = builder.AddProject<Projects.CoffeeTalk_Web>("web")
     .WithHttpEndpoint(env: "PORT", port: 3000)
     .WithReference(api)
-    .WithEnvironment("API_URL", api.GetEndpoint("https").Url.ToString())
-    .WithEnvironment("NEXT_PUBLIC_API_BASE_URL", api.GetEndpoint("https").Url.ToString())
-    .WithHealthCheck("/api/healthz");
+    .WithEnvironment("API_URL", api.GetEndpoint("http"))
+    .WithEnvironment("NEXT_PUBLIC_API_BASE_URL", api.GetEndpoint("http"));
 
 var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
 var e2eProjectDir = Path.Combine(repoRoot, "tests", "CoffeeTalk.E2E");
