@@ -24,6 +24,7 @@ spec:
         tags.datadoghq.com/team: roast
         tags.datadoghq.com/version: 1.0.0
     spec:
+      automountServiceAccountToken: false
       containers:
         - name: postgres
           image: docker.io/library/postgres:17.6
@@ -37,7 +38,7 @@ spec:
                 name: postgres-secrets
           volumeMounts:
             - name: pgdata
-              mountPath: /var/lib/postgresql/data
+              mountPath: /var/lib/postgresql
   volumeClaimTemplates:
     - metadata:
         name: pgdata

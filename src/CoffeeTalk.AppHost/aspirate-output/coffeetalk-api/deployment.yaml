@@ -26,6 +26,7 @@ spec:
         tags.datadoghq.com/team: roast
         tags.datadoghq.com/version: 1.0.0
     spec:
+      automountServiceAccountToken: false
       containers:
       - name: coffeetalk-api
         image: lbhackweekroast2025.azurecr.io/coffeetalk-api:latest

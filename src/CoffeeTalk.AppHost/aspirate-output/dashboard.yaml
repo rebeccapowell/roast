@@ -23,6 +23,7 @@ spec:
         tags.datadoghq.com/version: 1.0.0
     spec:
       terminationGracePeriodSeconds: 30
+      automountServiceAccountToken: false
       containers:
         - name: aspire-dashboard
           image: mcr.microsoft.com/dotnet/aspire-dashboard:9.0
