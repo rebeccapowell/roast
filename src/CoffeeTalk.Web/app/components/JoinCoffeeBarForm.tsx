@@ -81,13 +81,27 @@ export function JoinCoffeeBarForm() {
         body: JSON.stringify({ username }),
       });
 
-      const payload = await joinResponse.json();
+      let payload: any = await joinResponse.json().catch(() => null);
+      let effective = joinResponse;
       if (joinResponse.status === 404) {
         setError("We couldn't find a coffee bar with that code. Double-check the six characters.");
         return;
       }
 
-      if (!joinResponse.ok) {
+      // On bad request (e.g., username exists), try rejoin flow to fetch existing hipster
+      if (!joinResponse.ok && joinResponse.status === 400) {
+        const rejoinResponse = await fetch(`${API_BASE_URL}/coffee-bars/${normalizedCode}/hipsters:rejoin`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username }),
+        });
+        if (rejoinResponse.ok) {
+          effective = rejoinResponse;
+          payload = await rejoinResponse.json().catch(() => null);
+        }
+      }
+
+      if (!effective.ok) {
         setError((payload && (payload.detail ?? payload.title)) || "We couldn't join that coffee bar.");
         return;
       }

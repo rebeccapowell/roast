@@ -47,6 +47,7 @@ builder.Services.AddScoped<ICoffeeBarCodeGenerator, CoffeeBarCodeGenerator>();
 builder.Services.AddSingleton<INextIngredientSelector, RandomNextIngredientSelector>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IBrewSessionSummaryProvider, InMemoryBrewSessionSummaryProvider>();
+builder.Services.AddScoped<DataSeeder>();
 builder.Services.Configure<YouTubeOptions>(builder.Configuration.GetSection("YouTube"));
 builder.Services.PostConfigure<YouTubeOptions>(options =>
 {
@@ -67,15 +68,8 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-    using (var scope = app.Services.CreateScope())
-    {
-        var seeder = new DataSeeder(
-            scope.ServiceProvider.GetRequiredService<CoffeeTalkDbContext>(),
-            scope.ServiceProvider.GetRequiredService<ICoffeeBarRepository>(),
-            true);
-
-        await seeder.SeedAsync();
-    }
+    using var scope = app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<DataSeeder>().SeedAsync(true);
 
     app.UseSwagger();
     app.UseSwaggerUI();

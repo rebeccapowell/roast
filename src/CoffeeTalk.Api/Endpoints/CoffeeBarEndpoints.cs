@@ -50,6 +50,13 @@ public static class CoffeeBarEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status404NotFound);
 
+        group.MapPost("/{code}/hipsters:rejoin", RejoinCoffeeBarAsync)
+            .WithName("RejoinCoffeeBar")
+            .WithSummary("Rejoins a coffee bar with an existing username.")
+            .Produces<JoinCoffeeBarResponse>(StatusCodes.Status200OK)
+            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status404NotFound);
+
         group.MapPost("/{code}/ingredients", SubmitIngredientAsync)
             .WithName("SubmitIngredient")
             .WithSummary("Submits a YouTube video to a coffee bar.")
@@ -437,6 +444,44 @@ public static class CoffeeBarEndpoints
                 .Group(CoffeeBarHub.GetGroupName(coffeeBarResource.Code))
                 .CoffeeBarUpdated(coffeeBarResource)
                 .ConfigureAwait(false);
+
+            return TypedResults.Ok(response);
+        }
+        catch (DomainException ex)
+        {
+            return TypedResults.BadRequest(CreateProblemDetails(ex.Message));
+        }
+    }
+
+    private static async Task<Results<Ok<JoinCoffeeBarResponse>, BadRequest<ProblemDetails>, NotFound>> RejoinCoffeeBarAsync(
+        string code,
+        JoinCoffeeBarRequest request,
+        ICoffeeBarRepository repository,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var coffeeBar = await repository.GetByCodeAsync(code, cancellationToken).ConfigureAwait(false);
+            if (coffeeBar is null)
+            {
+                return TypedResults.NotFound();
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Username))
+            {
+                throw new DomainException("Hipster username is required.");
+            }
+
+            var normalized = request.Username.Trim().ToUpperInvariant();
+            var hipster = coffeeBar.Hipsters.FirstOrDefault(h => h.NormalizedUsername == normalized);
+            if (hipster is null)
+            {
+                return TypedResults.BadRequest(CreateProblemDetails("No hipster with that username exists in this coffee bar."));
+            }
+
+            var response = new JoinCoffeeBarResponse(
+                CoffeeBarContractsMapper.ToResource(coffeeBar),
+                CoffeeBarContractsMapper.ToResource(hipster));
 
             return TypedResults.Ok(response);
         }
