@@ -1,3 +1,6 @@
+using Aspire.Hosting;
+using CoffeeTalk.AppHost;
+
 var builder = DistributedApplication.CreateBuilder(args);
 
 var postgres = builder.AddPostgres("postgres")
@@ -17,14 +20,22 @@ var migrations = builder.AddProject<Projects.CoffeeTalk_Migrations>("coffeetalk-
     .WithReference(coffeeTalkDb)
     .WaitFor(coffeeTalkDb);
 
-var api = builder.AddProject<Projects.CoffeeTalk_Api>("coffeetalk-api")
+var api = builder.AddProject<Projects.CoffeeTalk_Api>("api")
     .WithReference(coffeeTalkDb)
-    .WaitForCompletion(migrations);
+    .WaitForCompletion(migrations)
+    .WithHttpEndpoint(env: "http");
 
-builder.AddNpmApp("coffeetalk-web", "../CoffeeTalk.Web")
+var web = builder.AddProject<Projects.CoffeeTalk_Web>("web")
     .WithHttpEndpoint(env: "PORT", port: 3000)
     .WithReference(api)
-    .WaitFor(api)
-    .WithEnvironment("NEXT_PUBLIC_API_BASE_URL", api.GetEndpoint("https"));
+    .WithEnvironment("API_URL", api.GetEndpoint("https"))
+    .WithEnvironment("NEXT_PUBLIC_API_BASE_URL", api.GetEndpoint("https"))
+    .WithHealthCheck("/api/healthz");
+
+var e2e = builder.AddProject<Projects.CoffeeTalk_E2E>("e2e")
+    .WithEnvironment("WEB_BASE_URL", web.GetEndpoint("http").Url)
+    .WithReference(web)
+    .WithReference(api)
+    .AsManualStart();
 
 await builder.Build().RunAsync();

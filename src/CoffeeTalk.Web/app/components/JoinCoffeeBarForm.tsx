@@ -58,7 +58,7 @@ export function JoinCoffeeBarForm() {
       return "";
     }
 
-    return `${window.location.origin}/coffee-bars/${result.coffeeBar.code}`;
+    return `${window.location.origin}/coffee/${result.coffeeBar.code}`;
   }, [result]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {

@@ -20,6 +20,8 @@
   <ItemGroup>
     <ProjectReference Include="..\CoffeeTalk.Api\CoffeeTalk.Api.csproj" />
     <ProjectReference Include="..\CoffeeTalk.Migrations\CoffeeTalk.Migrations.csproj" />
+    <ProjectReference Include="..\CoffeeTalk.Web\CoffeeTalk.Web.csproj" />
+    <ProjectReference Include="..\..\tests\CoffeeTalk.E2E\CoffeeTalk.E2E.csproj" />
   </ItemGroup>
 
 </Project>
