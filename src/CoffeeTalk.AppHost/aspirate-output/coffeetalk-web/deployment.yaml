@@ -1,0 +1,44 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coffeetalk-web
+  labels:
+    app: coffeetalk-web
+    tags.datadoghq.com/env: dev
+    tags.datadoghq.com/service: roast
+    tags.datadoghq.com/team: roast
+    tags.datadoghq.com/version: 1.0.0
+spec:
+  minReadySeconds: 60
+  replicas: 1
+  selector:
+    matchLabels:
+      app: coffeetalk-web
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: coffeetalk-web
+        tags.datadoghq.com/env: dev
+        tags.datadoghq.com/service: roast
+        tags.datadoghq.com/team: roast
+        tags.datadoghq.com/version: 1.0.0
+    spec:
+      automountServiceAccountToken: false
+      imagePullSecrets:
+      - name: acr-image-pull-secret
+      containers:
+      - name: coffeetalk-web
+        image: lbhackweekroast2025.azurecr.io/coffeetalk-web:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: nodejs
+          containerPort: 3000
+        envFrom:
+        - configMapRef:
+            name: coffeetalk-web-env
+        - secretRef:
+            name: coffeetalk-web-secrets
+      terminationGracePeriodSeconds: 180
