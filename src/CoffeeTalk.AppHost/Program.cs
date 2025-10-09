@@ -25,13 +25,13 @@ var migrations = builder.AddProject<Projects.CoffeeTalk_Migrations>("coffeetalk-
 var api = builder.AddProject<Projects.CoffeeTalk_Api>("api")
     .WithReference(coffeeTalkDb)
     .WaitForCompletion(migrations)
-    .WithHttpEndpoint(name: "api-http");
+    .WithHttpEndpoint();
 
 var web = builder.AddProject<Projects.CoffeeTalk_Web>("web")
-    .WithHttpEndpoint(name: "web-http", env: "PORT", port: 3000)
+    .WithHttpEndpoint(env: "PORT", port: 3000)
     .WithReference(api)
-    .WithEnvironment("API_URL", api.GetEndpoint("api-http").Url)
-    .WithEnvironment("NEXT_PUBLIC_API_BASE_URL", api.GetEndpoint("api-http").Url)
+    .WithEnvironment("API_URL", api.GetEndpoint("http"))
+    .WithEnvironment("NEXT_PUBLIC_API_BASE_URL", api.GetEndpoint("http"))
     .WithHealthCheck("/api/healthz");
 
 var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
@@ -45,7 +45,7 @@ var playwrightArgs = new[]
 };
 
 builder.AddExecutable("playwright", "dotnet", e2eProjectDir, playwrightArgs)
-    .WithEnvironment("WEB_BASE_URL", web.GetEndpoint("web-http").Url)
+    .WithEnvironment("WEB_BASE_URL", web.GetEndpoint("http"))
     .WithEnvironment("ASPIRE", "true")
     .WithReference(web)
     .WithReference(api)
