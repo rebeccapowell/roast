@@ -1,16 +1,19 @@
 {
   "projectPath": ".",
+  "inputPath": "aspirate-output",
   "outputPath": "aspirate-output",
+  "namespace": "hackweek-roast-2025",
   "containerRegistry": "lbhackweekroast2025.azurecr.io",
   "containerImageTags": [
     "latest"
   ],
   "containerBuilder": "docker",
+  "kubeContext": "aks-cls-dev-eu2-001",
   "outputFormat": "kustomize",
   "skipFinalKustomizeGeneration": false,
   "privateRegistryEmail": "aspir8@aka.ms",
   "includeDashboard": true,
-  "useCustomNamespace": false,
+  "useCustomNamespace": true,
   "secrets": {
     "salt": "F\u002BhSguKXW84KXpGG",
     "hash": "hpIkHrl2XkhJSIVDvFkNC6So9h8TOGmVLeHbqouo4PU=",

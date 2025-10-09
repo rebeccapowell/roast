@@ -1,7 +1,10 @@
+namespace: hackweek-roast-2025
+
 resources:
 - postgres
 - coffeetalk-migrator
 - coffeetalk-api
+- namespace.yaml
 - dashboard.yaml
 
 generatorOptions:
