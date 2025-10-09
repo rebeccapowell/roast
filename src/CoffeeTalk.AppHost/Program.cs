@@ -23,9 +23,10 @@ var api = builder.AddProject<Projects.CoffeeTalk_Api>("api")
     .WithReference(coffeeTalkDb)
     .WaitForCompletion(migrations);
 
-builder.AddProject<Projects.CoffeeTalk_Web>("web")
+builder.AddNpmApp("coffeetalk-web", "../CoffeeTalk.Web")
     .WithHttpEndpoint(env: "PORT", port: 3000)
     .WithReference(api)
+    .WaitFor(api)
     .WithEnvironment("API_URL", api.GetEndpoint("http"))
     .WithEnvironment("NEXT_PUBLIC_API_BASE_URL", api.GetEndpoint("http"));
 
