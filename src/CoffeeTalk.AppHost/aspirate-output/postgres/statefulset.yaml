@@ -5,6 +5,10 @@ metadata:
   name: postgres
   labels:
     app: postgres
+    tags.datadoghq.com/env: dev
+    tags.datadoghq.com/service: roast
+    tags.datadoghq.com/team: roast
+    tags.datadoghq.com/version: 1.0.0
 spec:
   serviceName: "postgres"
   replicas: 1
@@ -15,6 +19,10 @@ spec:
     metadata:
       labels:
         app: postgres
+        tags.datadoghq.com/env: dev
+        tags.datadoghq.com/service: roast
+        tags.datadoghq.com/team: roast
+        tags.datadoghq.com/version: 1.0.0
     spec:
       containers:
         - name: postgres
