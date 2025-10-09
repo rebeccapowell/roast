@@ -9,8 +9,3 @@ configMapGenerator:
 - name: coffeetalk-web-env
   literals:
     - HTTP_PORTS=3000
-
-secretGenerator:
-- name: coffeetalk-web-secrets
-  envs:
-  - .coffeetalk-web.secrets

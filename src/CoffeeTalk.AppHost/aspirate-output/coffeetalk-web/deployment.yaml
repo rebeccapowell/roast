@@ -39,6 +39,4 @@ spec:
         envFrom:
         - configMapRef:
             name: coffeetalk-web-env
-        - secretRef:
-            name: coffeetalk-web-secrets
       terminationGracePeriodSeconds: 180

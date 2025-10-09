@@ -4,6 +4,7 @@ resources:
 - postgres
 - coffeetalk-migrator
 - coffeetalk-api
+- coffeetalk-web
 - namespace.yaml
 - dashboard.yaml
 - dockerpull.yaml

@@ -30,7 +30,8 @@
       },
       "coffeetalk-api": {
         "ConnectionStrings__coffeetalkdb": "F\u002BhSguKXW84KXpGGXTCzBusAaggrSClyBTUQkT3Zv07JHgVmbtwmZ68TcXSrfK\u002BrtgjQCBQIKHJmtXFsYEVs/eiFgVuAWSCnPVo9IJ2gfhfBJDjIwnU/YK2fJxDs\u002BPiqZXSOQpFhxu5hBHeT7rIhHtnut1w0ZiK7w1Eb"
-      }
+      },
+      "coffeetalk-web": {}
     }
   }
 }
