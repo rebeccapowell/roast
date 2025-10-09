@@ -729,8 +729,22 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
           body: JSON.stringify({ username: trimmed }),
         });
 
-        const payload = await response.json();
-        if (!response.ok) {
+        let payload: any = await response.json().catch(() => null);
+        let effective = response;
+        // If joining fails (e.g., username already exists), try rejoining to fetch existing hipsterId
+        if (!response.ok && response.status === 400) {
+          const rejoin = await fetch(`${API_BASE_URL}/coffee-bars/${normalizedCode}/hipsters:rejoin`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: trimmed }),
+          });
+          if (rejoin.ok) {
+            effective = rejoin;
+            payload = await rejoin.json().catch(() => null);
+          }
+        }
+
+        if (!effective.ok) {
           setJoinError((payload && (payload.detail ?? payload.title)) || "We couldn't join that coffee bar.");
           return;
         }
@@ -759,6 +773,13 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
     },
     [joinUsername, normalizedCode],
   );
+
+  const handleLeave = useCallback(() => {
+    removeIdentity(normalizedCode);
+    setIdentity(null);
+    setJoinUsername("");
+    setJoinError(null);
+  }, [normalizedCode]);
 
   const handleSubmitIngredient = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
@@ -1250,6 +1271,9 @@ export function CoffeeBarClient({ code }: CoffeeBarClientProps) {
                     <p className={styles.identityLine}>
                       Signed in as <strong>{identity.username}</strong>
                     </p>
+                    <button className={styles.secondaryButton} type="button" onClick={handleLeave}>
+                      Leave this bar
+                    </button>
                   </section>
                 )}
               </aside>
