@@ -29,8 +29,8 @@ jobs:
           API_URL: ${{ secrets.API_URL }}
           API_TOKEN: ${{ secrets.API_TOKEN }}
 
-      - name: Install dotnet-aspire
-        run: dotnet tool install --global dotnet-aspire
+      - name: Install Aspire CLI
+        run: dotnet tool install --global aspire.cli
 
       - name: Add dotnet tool cache to PATH
         run: echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
@@ -42,4 +42,4 @@ jobs:
           pwsh bin/Debug/net9.0/playwright.ps1 install --with-deps
 
       - name: Trigger E2E via Aspire CLI
-        run: dotnet aspire run e2e --project src/CoffeeTalk.AppHost/CoffeeTalk.AppHost.csproj
+        run: aspire run e2e --project src/CoffeeTalk.AppHost/CoffeeTalk.AppHost.csproj

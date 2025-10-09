@@ -1,5 +1,7 @@
+using System;
+using System.IO;
 using Aspire.Hosting;
-using CoffeeTalk.AppHost;
+using Aspire.Hosting.ApplicationModel;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -32,10 +34,17 @@ var web = builder.AddProject<Projects.CoffeeTalk_Web>("web")
     .WithEnvironment("NEXT_PUBLIC_API_BASE_URL", api.GetEndpoint("https"))
     .WithHealthCheck("/api/healthz");
 
-var e2e = builder.AddProject<Projects.CoffeeTalk_E2E>("e2e")
+var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+var e2eProjectDir = Path.Combine(repoRoot, "tests", "CoffeeTalk.E2E");
+
+var e2e = builder.AddExecutable("e2e", "dotnet", e2eProjectDir,
+        "test",
+        "CoffeeTalk.E2E.csproj",
+        "--logger",
+        "trx")
     .WithEnvironment("WEB_BASE_URL", web.GetEndpoint("http").Url)
     .WithReference(web)
     .WithReference(api)
-    .AsManualStart();
+    .WithAnnotation(new ExplicitStartupAnnotation());
 
 await builder.Build().RunAsync();
