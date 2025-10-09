@@ -27,6 +27,8 @@ spec:
         tags.datadoghq.com/version: 1.0.0
     spec:
       automountServiceAccountToken: false
+      imagePullSecrets:
+      - name: acr-image-pull-secret
       containers:
       - name: coffeetalk-migrator
         image: lbhackweekroast2025.azurecr.io/coffeetalk-migrator:latest

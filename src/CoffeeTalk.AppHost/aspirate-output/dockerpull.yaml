@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: acr-image-pull-secret
+  namespace: default
+type:  kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: |
+    ewogICJhdXRocyI6IHsKICAgICJodHRwczovL2xiaGFja3dlZWtyb2FzdDIwMjUuYXp1cmVjci5pby8iOiB7CiAgICAgICJ1c2VybmFtZSI6ICJsYmhhY2t3ZWVrcm9hc3QyMDI1IiwKICAgICAgInBhc3N3b3JkIjogIlRrNUx5eEc2bWdnTUZ0OE9kM3VjeWpLS1hnMHIzeUhRcW5tRklNQVRLeStBQ1JEbFdBc2IiCiAgICB9CiAgfQp9
